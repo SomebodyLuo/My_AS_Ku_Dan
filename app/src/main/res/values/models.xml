@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="model_array">
+        <item>DEFAULT</item>
+        <item>BALL</item>
+        <item>PLANT</item>
+        <item>ROBOT</item>
+    </string-array>
+</resources>

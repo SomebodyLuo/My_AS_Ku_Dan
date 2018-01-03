@@ -1,0 +1,439 @@
+package orbi.render;
+
+import android.content.Context;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
+import android.opengl.GLSurfaceView;
+import android.util.Log;
+
+import com.threed.jpct.Camera;
+import com.threed.jpct.Config;
+import com.threed.jpct.FrameBuffer;
+import com.threed.jpct.GLSLShadowInjector;
+import com.threed.jpct.Interact2D;
+import com.threed.jpct.Light;
+import com.threed.jpct.Matrix;
+import com.threed.jpct.Object3D;
+import com.threed.jpct.Primitives;
+import com.threed.jpct.Projector;
+import com.threed.jpct.RGBColor;
+import com.threed.jpct.SimpleVector;
+import com.threed.jpct.World;
+import com.threed.jpct.util.ExtendedPrimitives;
+import com.threed.jpct.util.MemoryHelper;
+import com.threed.jpct.util.ShadowHelper;
+
+import org.opencv.core.Point;
+
+import javax.microedition.khronos.egl.EGLConfig;
+import javax.microedition.khronos.opengles.GL10;
+
+import orbi.orientationProvider.OrientationProvider;
+import orbi.representation.MatrixF4x4;
+
+
+
+public class RendererJPCT implements GLSurfaceView.Renderer
+{
+
+
+    //private static float SCALE_FACTOR = 0.000001f;//custom to huawei tablet we use and lens combinaison
+    public float oldAngle = 0;
+    public Object3D sunball = null;
+    protected World world;
+    protected FrameBuffer fb;
+    float lastDistance = 100;
+    private long visibilityTime = 0;
+    private OrientationProvider orientationProvider = null;
+    private Context context;
+    private boolean mFovSet;
+    private boolean isMoonMode = false;
+    private float elevationZ = 0;
+    private float further = 1;
+    private Light sun = null;
+    private Light sun2 = null;
+    private Light sun3 = null;
+    private Object3D root;
+    private Object3D model = null;
+    private Object3D plane = null;
+    private SimpleVector newPos;
+    private SimpleVector newPosSun;
+    private float newSize = 0;
+    private float oldSize = 0;
+    private Point oldPoint = null;
+    private SimpleVector oldSimpleVector = null;
+    private float markerWidthInMM = 60;//60
+    private boolean isSunMode = false;
+    private ShadowHelper sh;
+    private float userScaleFactor = 0;
+
+    private float factor;
+
+
+
+    public RendererJPCT(Context context) {
+        this.context = context;
+    }
+
+    public void init(Object3D ob)
+    {
+        //  root = Primitives.getSphere(2f);
+        root = Primitives.getSphere(0.001f);
+
+        model = ob;
+        model.setVisibility(false);
+        //bounding box expected in mm for real life model when considering scale
+        factor = 0.001f * model.getScale();
+
+        root.addChild(model);
+
+        //--------------
+        //Create World
+        //-------------
+        world = new World();
+        world.setAmbientLight(90, 90, 90);
+
+
+        //ensure the light is set away enough from the AR
+        // further = Math.max(Math.max((bounds[1] - bounds[0]), (bounds[3] - bounds[2])), (bounds[5] - bounds[4]));
+        // larger the value the further back you can view it from
+        Config.farPlane = 20000;//20000
+        Config.nearPlane = 1;
+
+        //----------------
+        //Sun Light
+        //-----------------
+        sun = new Light(world);
+        sun.setIntensity(254, 254, 254);
+        sun.setAttenuation(-1);
+        //----------------
+        //Sun2 Light
+        //-----------------
+        sun2 = new Light(world);
+        sun2.setIntensity(254, 254, 254);
+        sun2.setAttenuation(1);
+        //----------------
+        //Sun2 Light
+        //-----------------
+        sun3 = new Light(world);
+        sun3.setIntensity(200, 200, 200);
+        sun3.setAttenuation(-1);
+
+        //-----------------------
+        //Add object to world
+        //----------------------
+        //increase size if you want to see where the sun get located
+        sunball = Primitives.getSphere(model.getScale());
+        sunball.setVisibility(true);
+        root.addChild(sunball);
+
+
+        //root.addChild(plane);
+        world.addObject(model);
+        //world.addObject(sunball);
+        world.addObject(root);
+        world.buildAllObjects();
+
+        //World Camera
+        //---------------
+        Camera cam = world.getCamera();
+
+        float distanceFromModel = 180f;//180f lower amount scales up
+        cam.setPosition(0, 0, -distanceFromModel);//position at 30deg
+        cam.lookAt(new SimpleVector(0, 0, 0));
+
+        //set initial position
+        SimpleVector sv = new SimpleVector();
+        sv.set(root.getTransformedCenter());
+        sv.y -= 100;
+        sv.z -= 100;
+        sun.setPosition(sv);
+        sun2.setPosition(sv);
+        sun3.setPosition(sv);
+
+
+        MemoryHelper.compact();
+
+        mFovSet = true;
+
+    }
+
+    public void setOrientationProvider(OrientationProvider orientationProvider) {
+        this.orientationProvider = orientationProvider;
+    }
+    public void swapScaleFactor(float v)
+    {
+        model.setScale(v);
+        factor = 0.001f * model.getScale();
+    }
+
+
+    public void setUserScaleFactor(float v)
+    {
+        userScaleFactor = v;
+    }
+
+    float animCount=0;
+
+    @Override
+    public void onSurfaceChanged(GL10 gl, int width, int height)
+    {
+        try
+        {
+
+
+        fb = new FrameBuffer(width, height);
+
+        }
+        catch (Exception e)
+        {
+            throw new RuntimeException(e);
+        }
+
+    }
+
+    @Override
+    public void onSurfaceCreated(GL10 gl, EGLConfig config)
+    {
+        // added from nothing to below,allows transparencies in textures
+        gl.glEnable(GL10.GL_BLEND);
+        gl.glBlendFunc(GL10.GL_ONE, GL10.GL_ONE_MINUS_SRC_ALPHA);
+    }
+    @Override
+    public void onDrawFrame(GL10 gl)
+    {
+        if (root != null)
+        {
+
+            if (newPos != null)
+            {
+                root.clearRotation();
+                root.clearTranslation();
+                root.translate(newPos);
+
+                if (newSize != 0)
+                {
+                    Log.i("PFL", "set scale" + newSize);
+                    model.setScale(newSize + userScaleFactor);
+                }
+
+
+                animCount+=0.1;
+                if (animCount>1) animCount=0;
+                model.animate(animCount);
+
+                //---------------------
+                //device sensors data
+                //---------------------
+                if (orientationProvider != null)
+                {
+                    MatrixF4x4 rot = new MatrixF4x4();
+                    orientationProvider.getRotationMatrix(rot);
+                    Matrix jpctRotMat = new Matrix();
+
+                    //implement as well the rotation to retrieve our system
+                    copyMatrix(rot.getMatrix(), jpctRotMat);
+                    jpctRotMat.rotateX((float) (Math.PI));
+                    jpctRotMat.rotateZ((float) (Math.PI / 2f));
+
+                    root.setRotationMatrix(jpctRotMat);
+                }
+
+                if (newPosSun != null)
+                {
+                    //only when initially setting the sun location
+                    // after just assume same relative position
+                    sunball.clearRotation();
+                    sunball.clearTranslation();
+                    sunball.translate(newPosSun.x - newPos.x, newPosSun.y - newPos.y, newPosSun.z - newPos.z);
+
+                    sun.setPosition(sunball.getTransformedCenter());
+                    sun2.setPosition(sunball.getTransformedCenter());
+                    sun3.setPosition(sunball.getTransformedCenter());
+
+                    newPosSun = null;
+                }
+
+            }
+
+        }
+        /*
+        if (System.currentTimeMillis() - time >= 1000) {
+            Logger.log(fps + "fps");
+            fps = 0;
+            time = System.currentTimeMillis();
+        }
+        fps++;
+         */
+
+        //------------
+        //updates Here
+        //--------------
+        //sh.updateShadowMap(fb, world);
+
+        fb.clear();
+        world.renderScene(fb);
+        world.draw(fb);
+        fb.display();
+    }
+
+    //---------------------------
+    //Update 3d asset position
+    //---------------------------
+    public void updatePosition(Point pt1, float azi,float zenith,float sizeMarker, double width, double height)
+    {
+
+        //get the blobs point and apply to 3d assets position
+        if (pt1 != null)
+        {
+            Point center = smoothPoint(pt1);
+            //move root to tracked location
+            newPos = smoothSimpleVector(getWorldPointFrom(center.x, center.y, width, height));
+        }
+
+        //set the 3d assets ratio for scale -: needs improvement.
+        float ratioForScale = (float) smoothSizing(sizeMarker);
+        newSize = factor * ratioForScale;
+
+        //-------------
+        //Environmental from realworld sun - cast same shadow onto 3d asset
+        //--------------
+        double ar=azi*Math.PI/180.0;
+        double er=zenith*Math.PI/180.0;
+
+        //if sun below the horizon just set light to a default night time angle
+        if (zenith > 90)
+        {
+            //todo
+        }
+        else
+        {
+            SimpleVector vec = new SimpleVector();
+            float lightDistance =10000;//further* model.getScale();
+
+            vec.z = newPos.z + (float)(lightDistance*Math.sin(er));
+            vec.x = newPos.x + (float)(lightDistance *Math.sin(ar));
+            vec.y = newPos.y + (float)(lightDistance * Math.cos(ar));
+
+
+            newPosSun = vec;
+        }
+
+
+    }
+
+
+    //--- fin manual set
+
+    //both copy the matrix and do the rotations etc required to match our coordinate system
+    private void copyMatrix(float[] src, Matrix dest) {
+        dest.setRow(0, src[0], src[1], src[2], 0);
+        dest.setRow(1, src[4], src[5], src[6], 0);
+        dest.setRow(2, src[8], src[9], src[10], 0);
+        dest.setRow(3, 0f, 0f, 0f, 1f);
+    }
+
+
+
+    SimpleVector smoothSimpleVector(SimpleVector newVect) {
+        float smoothFactor = 0.1f;//the smaller the highest the premium for the most recent value
+        if (oldSimpleVector != null) {
+            oldSimpleVector.x = oldSimpleVector.x * smoothFactor + (1f - smoothFactor) * newVect.x;
+            oldSimpleVector.y = oldSimpleVector.y * smoothFactor + (1f - smoothFactor) * newVect.y;
+            oldSimpleVector.z = oldSimpleVector.z * smoothFactor + (1f - smoothFactor) * newVect.z;
+        } else oldSimpleVector = newVect;
+        return oldSimpleVector;
+    }
+
+    private float smoothSizing(float newSize)
+    {
+        float smoothFactor = 0.8f;//the smaller the higher the premium for the most recent value
+        Log.i("PFL", "smooth scale " + newSize);
+        if (oldSize > 0) {
+            oldSize = (float) (oldSize * smoothFactor + (1f - smoothFactor) * newSize);
+        } else oldSize = newSize;
+        return oldSize;
+    }
+
+    private float smoothAngle(float newAngle) {
+        float smoothFactor = 0.1f;//the smaller the highest the premium for the most recent value
+        if (oldAngle > 0) {
+            oldAngle = (float) (oldAngle * smoothFactor + (1f - smoothFactor) * newAngle);
+        } else oldAngle = newAngle;
+        Log.i("PFL", "smooth angle " + oldAngle);
+        return oldAngle;
+    }
+
+    private Point smoothPoint(Point pt)
+    {
+        float smoothFactor = 0.1f;//the smaller the higher the premium for the most recent value
+        if (oldPoint != null) {
+            oldPoint = new Point(oldPoint.x * smoothFactor + (1f - smoothFactor) * pt.x,
+                    oldPoint.y * smoothFactor + (1f - smoothFactor) * pt.y);
+        } else oldPoint = pt;
+        return oldPoint;
+    }
+
+    private SimpleVector getWorldPointFrom(double x, double y, double width, double height)
+    {
+        double ux = x / width;
+        double uy = y / height;
+
+        SimpleVector dir = Interact2D.reproject2D3DWS(world.getCamera(), fb, (int) (ux * fb.getWidth()), (int) (uy * fb.getHeight())).normalize();
+        SimpleVector pos = world.getCamera().getPosition();
+
+        float a = (0 - pos.z) / dir.z;//0 as target expected to be at z=0
+        float xn = pos.x + a * dir.x;
+        float yn = pos.y + a * dir.y;
+        return new SimpleVector(xn, yn, 0);
+    }
+
+
+    public boolean objectVisible() {
+        return root.getVisibility();
+    }
+
+    public void setVisible(boolean se)
+    {
+        if (se == false) {
+            if (visibilityTime == 0) {
+                //start timer
+                visibilityTime = System.currentTimeMillis();
+                return;
+            } else {
+                if (((System.currentTimeMillis() - visibilityTime) < 3000)) {
+                    return;
+                }
+                //more than 3 seconds, we hide the ar
+            }
+        }
+
+        if (se) {
+            model.setVisibility(true);
+            visibilityTime = 0;
+        } else {
+            model.setVisibility(false);
+        }
+    }
+
+    public void setElevation(float elev) {
+
+        this.elevationZ = elev;
+
+    }
+
+
+    public void setSunLum(float lum)
+    {
+        sun.setIntensity(new SimpleVector(lum, lum, lum));
+        sun2.setIntensity(new SimpleVector(lum, lum, lum));
+    };
+
+    public void setSunMode(boolean sunOn)
+    {
+        isSunMode = sunOn;
+    }
+
+}

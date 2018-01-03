@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#81d4fa</color>
+    <!-- Notification Bar -->
+    <color name="colorPrimaryDark">#4ba3c7</color>
+    <!-- accent -->
+    <color name="colorAccent">#b6ffff</color>
+    <!-- Actionbar text -->
+    <color name="textColorPrimary">#FFFFFF</color>
+
+    <!-- default button -->
+    <color name="image_border">#FFFFFF</color>
+    <color name="image_background">#FFFFFF</color>
+
+    <color name="default_color">#FFFFFF</color>
+    <color name="default_color_border">#FFFFFF</color>
+    <color name="default_color_down">#90FFFFFF</color>
+    <color name="default_color_down_border">#90FFFFFF</color>
+
+    <color name="spinner_item_text_color">#FFFFFF</color>
+</resources>
