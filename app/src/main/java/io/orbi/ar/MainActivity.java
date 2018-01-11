@@ -122,7 +122,7 @@ public class MainActivity extends Activity implements OnOrbiCompleteListener,OnM
     private void setupFragment()
     {
         Bundle bundle = new Bundle();
-        bundle.putInt("model_index", 0);
+        bundle.putInt("model_index", 1);
         arScene = CameraFragment.newInstance();
         arScene.setArguments(bundle);
 

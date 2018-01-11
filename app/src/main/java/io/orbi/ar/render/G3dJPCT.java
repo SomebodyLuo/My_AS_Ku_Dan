@@ -150,11 +150,13 @@ public class G3dJPCT {
 		int modelType; float[] pos=new float[5], vec9=new float[9];
 		double[] phr=new double[3]; float initAGL,radius;
 		ModelPart modelPart; ShadowJPCT.FlatShadow shd;
+
 		public VisualObj(int a) {
 			modelType=objTypeID[a]; initAGL=objHeight[a]; radius=objRadius[a];
 			MathJPCT.phr2vec9_d(phr,vec9);
 			shd=new ShadowJPCT.FlatShadow(this);
 			modelPart=new ModelPart(modelType,null,-1,pos,vec9,this); }
+
 		void setPos(float[] a) { pos[0]=a[0]; pos[1]=a[1]; pos[2]=a[2]; }
 		void setPHR(double[] a) {
 			System.arraycopy(a,0,phr,0,3); MathJPCT.phr2vec9_d(phr,vec9); }

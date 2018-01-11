@@ -47,6 +47,7 @@ import android.renderscript.Type;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.FileProvider;
+import android.text.TextUtils;
 import android.util.Log;
 import android.util.Size;
 import android.view.LayoutInflater;
@@ -104,6 +105,7 @@ import static android.opengl.GLSurfaceView.RENDERMODE_WHEN_DIRTY;
 
 public class CameraFragment extends Fragment implements SensorEventListener
 {
+    private final String TAG = "luoyouren";
 
     public OnOrbiCompleteListener mListener;//call back to main activity
     public OnModelChangeListener modListener;//when model asset needs changing
@@ -171,6 +173,8 @@ public class CameraFragment extends Fragment implements SensorEventListener
         public void surfaceDestroyed(SurfaceHolder holder) {
         }
     };
+
+    // luoyouren: 重要！
     private ImageReader.OnImageAvailableListener mImageAvailListener = new ImageReader.OnImageAvailableListener() {
 
 
@@ -187,6 +191,7 @@ public class CameraFragment extends Fragment implements SensorEventListener
             // Synchronize with the tracker state to prevent changes to state mid-processing.
             if(reader != null)
             {
+
                 synchronized (mTrackerState)
                 {
 
@@ -200,6 +205,7 @@ public class CameraFragment extends Fragment implements SensorEventListener
                     int width = currentCameraImage.getWidth();
                     int height = currentCameraImage.getHeight();
 
+                    // luoyouren: just Y channel
                     // Get the buffer holding the luma data from the YUV-format image.
                     ByteBuffer buffer = currentCameraImage.getPlanes()[0].getBuffer();
 
@@ -250,7 +256,9 @@ public class CameraFragment extends Fragment implements SensorEventListener
                     decodeYUV(argb8888, data, width, height);
                     colourFrame.setPixels(argb8888, 0, width, 0, 0, width, height);
 
-
+                    //----------------------------------
+                    //Render Camera Frame to Screen
+                    //----------------------------------
                     renderFrameToScreen(colourFrame, cameraFrameRect, mTrackerState, trackedCorners);
 
                     //------------------------------------------------------------------------------
@@ -281,10 +289,15 @@ public class CameraFragment extends Fragment implements SensorEventListener
             //-------------------------------------------------------
             // Add the image trackable to the native image tracker.
             //-------------------------------------------------------
-            addTrackable(R.mipmap.ani1, "ANI1");
-            addTrackable(R.mipmap.ani2, "ANI2");
-            addTrackable(R.mipmap.kien, "Kien");
-
+//            addTrackable(R.mipmap.ani1, "ANI1");
+//            addTrackable(R.mipmap.ani2, "ANI2");
+//            addTrackable(R.mipmap.kien, "Kien");
+            addTrackable(R.mipmap.sample, "sample");
+//            addTrackable(R.mipmap.desktop, "desktop");
+//            addTrackable(R.mipmap.roof, "roof");
+            addTrackable(R.mipmap.roof2, "roof2");
+            addTrackable(R.mipmap.roof3, "roof3");
+            addTrackable(R.mipmap.roof4, "roof4");
             //-------
 
 
@@ -349,6 +362,10 @@ public class CameraFragment extends Fragment implements SensorEventListener
     private double fixedAzimuth = 0;
     private double fixedZenith = 90;
     private TextView output;
+
+    // 显示时间
+    private TextView info;
+
     //-----------
     //Chameleon
     //----------
@@ -457,6 +474,11 @@ public class CameraFragment extends Fragment implements SensorEventListener
         //Text HUD
         //----------
         output = (TextView) view.findViewById(R.id.output);
+
+        //---------
+        //Text HUD
+        //----------
+        info = (TextView) view.findViewById(R.id.info);
 
         //------------------------------
         //Tracking target image
@@ -585,6 +607,8 @@ public class CameraFragment extends Fragment implements SensorEventListener
                 {
                     lss = false;
                     sendToast("LSS Off");
+
+                    //light Detection from location
                     getlocLight();
                 }
 
@@ -655,7 +679,7 @@ public class CameraFragment extends Fragment implements SensorEventListener
                     //render = null;
 
                     //Send back to main activity to remove fragment and recreate with diff model load
-                    //modListener.onModelChanged(w_model);
+//                    modListener.onModelChanged(w_model);
 
                 }
 
@@ -795,7 +819,9 @@ public class CameraFragment extends Fragment implements SensorEventListener
 
         //create the render
         render = new RendererJPCT(getActivity().getApplicationContext());
+
         render.setSunMode(false);//makes sure sun is on corrected side for enviro
+
         //Real Sun Projection
         light1 = render.addSun(); // you can add 8 lights at most, return -1 if error
         //Chameleon color
@@ -806,7 +832,7 @@ public class CameraFragment extends Fragment implements SensorEventListener
         {
             Log.i("@@INDEX",":Plant");
             sendToast("Plant Loaded");
-            render.init(loadPlant01());
+            render.init(loadIronman());
             render.setLightColor(light1, 255, 255, 255);
             render.setSunLum(210);//set ambient init light
         }
@@ -814,7 +840,7 @@ public class CameraFragment extends Fragment implements SensorEventListener
         {
             Log.i("@@INDEX",":Ball");
             sendToast("Ball Loaded");
-            render.init(loadObj());
+            render.init(loadPlant01());
             render.setLightColor(light1, 60, 60, 60);
             render.setSunLum(180);//set ambient init light
         }
@@ -822,6 +848,8 @@ public class CameraFragment extends Fragment implements SensorEventListener
         //sendToast("Model loaded");
         //gl surface view
         glSurfaceView = (GLSurfaceView) v.findViewById(R.id.glsurfaceview);
+
+        // luoyouren: 设置透明
         glSurfaceView.setEGLContextClientVersion(2);
         glSurfaceView.setEGLConfigChooser(8, 8, 8, 8, 16, 0);
         glSurfaceView.getHolder().setFormat(PixelFormat.TRANSLUCENT);
@@ -1016,10 +1044,13 @@ public class CameraFragment extends Fragment implements SensorEventListener
             mImageReader = ImageReader.newInstance(mCameraPreviewSize.getWidth(), mCameraPreviewSize.getHeight(), ImageFormat.YUV_420_888, 2);
 
             // Handle all new camera frames received on the background thread.
+            // mImageAvailListener非常关键！
             mImageReader.setOnImageAvailableListener(mImageAvailListener, mBackgroundHandler);
 
             // Set up a CaptureRequest.Builder with the output Surface of the ImageReader.
             mPreviewRequestBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
+
+            // 将mImageReader加入到Preview Request队列中
             mPreviewRequestBuilder.addTarget(mImageReader.getSurface());
 
             // Create the camera preview CameraCaptureSession.
@@ -1238,8 +1269,9 @@ public class CameraFragment extends Fragment implements SensorEventListener
 
             // Native call to the markerless tracking object.  channels / number of channels in the image (mono, colour, colour+alpha)
             trackedData = processArbiTrackerFrame(data, mRotationQuaternion, width, height, 1, 0, false);
-        }
 
+            Log.i(TAG, "processArbiTrackerFrame over");
+        }
         if (trackedData != null)
         {
 
@@ -1248,6 +1280,11 @@ public class CameraFragment extends Fragment implements SensorEventListener
             projectedTrackingCorners.get(1).set(Math.round(trackedData[4]), Math.round(trackedData[5]));
             projectedTrackingCorners.get(2).set(Math.round(trackedData[6]), Math.round(trackedData[7]));
             projectedTrackingCorners.get(3).set(Math.round(trackedData[8]), Math.round(trackedData[9]));
+
+            for (int i = 0; i < 4; i++)
+            {
+                Log.i(TAG, "projectedTrackingCorners.get(i).x =  " + projectedTrackingCorners.get(i).x + "; y = " + projectedTrackingCorners.get(i).y);
+            }
 
             /*
             //FIND MAX OF DISTANCE BETWEEN POINTS
@@ -1277,51 +1314,51 @@ public class CameraFragment extends Fragment implements SensorEventListener
             //float scale = max / 2;
 
 
-        //--------------------------
-        //Render Updates
-        //--------------------------
-        if (render!=null && !frozen)
-        {
-
-            if (trackedData!=null)
+            //--------------------------
+            //Render Updates
+            //--------------------------
+            if (render!=null && !frozen)
             {
-                Point stable_point = smoother(trackedData[0],trackedData[1]);
 
-                //render.updatePosition(new Point(Math.round(trackedData[0]), Math.round(trackedData[1])), 0, scale, width, height);
-                //Log.i("@@POINT_MOD",":"+Math.round(trackedData[0])+":"+Math.round(trackedData[1]));
-                if(!lss && !angle_preset)
+                if (trackedData!=null)
                 {
-                    render.updateReference(stable_point, (float) enviro.getAzimuth(), (float) enviro.getZenithAngle(), scale, width, height);
-                    //render.updatePosition(new Point(Math.round(trackedData[0]), Math.round(trackedData[1])), (float) enviro.getAzimuth(), (float) enviro.getZenithAngle(), scale, width, height);
-                    render.setLightAngle(light1,(float) enviro.getAzimuth(), (float) enviro.getZenithAngle());
-                    render.setLightAngle(light2,(float) enviro.getAzimuth(), 0);//chameleon
+                    Point stable_point = smoother(trackedData[0], trackedData[1]);
+
+                    //render.updatePosition(new Point(Math.round(trackedData[0]), Math.round(trackedData[1])), 0, scale, width, height);
+                    //Log.i("@@POINT_MOD",":"+Math.round(trackedData[0])+":"+Math.round(trackedData[1]));
+                    if(!lss && !angle_preset)
+                    {
+                        render.updateReference(stable_point, (float) enviro.getAzimuth(), (float) enviro.getZenithAngle(), scale, width, height);
+                        //render.updatePosition(new Point(Math.round(trackedData[0]), Math.round(trackedData[1])), (float) enviro.getAzimuth(), (float) enviro.getZenithAngle(), scale, width, height);
+                        render.setLightAngle(light1,(float) enviro.getAzimuth(), (float) enviro.getZenithAngle());
+                        render.setLightAngle(light2,(float) enviro.getAzimuth(), 0);//chameleon
+
+                    }
+                    else if(lss)
+                    {
+                        render.updateReference(stable_point, (float) fixedAzimuth,(float) fixedZenith, scale, width, height);
+                        render.setLightAngle(light1,(float) fixedAzimuth,(float) fixedZenith);
+                        render.setLightAngle(light2,(float) fixedAzimuth, 0);//Chameleon
+
+                    }
+                    else if(!lss && angle_preset)
+                    {
+                        render.updateReference(stable_point, (float) preset_azimuth, (float) preset_zenith, scale, width, height);
+                        render.setLightAngle(light1,(float) preset_azimuth,(float) preset_zenith);
+                        render.setLightAngle(light2,(float) preset_azimuth, 0);//Chameleon
+                    }
 
                 }
-                else if(lss)
-                {
-                    render.updateReference(stable_point, (float) fixedAzimuth,(float) fixedZenith, scale, width, height);
-                    render.setLightAngle(light1,(float) fixedAzimuth,(float) fixedZenith);
-                    render.setLightAngle(light2,(float) fixedAzimuth, 0);//Chameleon
 
-                }
-                else if(!lss && angle_preset)
-                {
-                    render.updateReference(stable_point, (float) preset_azimuth, (float) preset_zenith, scale, width, height);
-                    render.setLightAngle(light1,(float) preset_azimuth,(float) preset_zenith);
-                    render.setLightAngle(light2,(float) preset_azimuth, 0);//Chameleon
-                }
-
+                /*
+                //retrieve sensor quarternion as retrieved by kudan and pass it to our jpoct renderer
+                float[] matrix=new float[16];
+                SensorManager.getRotationMatrixFromVector(matrix, mRotationQuaternion);
+                render.setRotationMatrix(matrix);*/
             }
+            glSurfaceView.requestRender();//跳真
 
-            /*
-            //retrieve sensor quarternion as retrieved by kudan and pass it to our jpoct renderer
-            float[] matrix=new float[16];
-            SensorManager.getRotationMatrixFromVector(matrix, mRotationQuaternion);
-            render.setRotationMatrix(matrix);*/
         }
-        glSurfaceView.requestRender();//跳真
-
-    }
         return newState;
     }
 
@@ -1428,12 +1465,17 @@ public class CameraFragment extends Fragment implements SensorEventListener
             }
         });
 
+        // luoyouren: 显示帧率
+        updateFrameRates();
+        //---------------------
+
         mSrcRect.set(0, 0, mCameraPreviewSize.getWidth(), mCameraPreviewSize.getHeight());
         mDstRect.set(0, 0, mSurfaceView.getWidth(), mSurfaceView.getHeight());
         mCanvasTransform.setRectToRect(mSrcRect, mDstRect, Matrix.ScaleToFit.END);
 
         Canvas canvas = mSurfaceView.getHolder().getSurface().lockCanvas(mSurfaceView.getClipBounds());
 
+        // luoyouren: 将Camera Frame刷新给SurfaceView
         Drawing.drawBackground(
                 canvas,
                 cameraFrame
@@ -1442,6 +1484,7 @@ public class CameraFragment extends Fragment implements SensorEventListener
         //------------------------------
         // if debug Draw the tracking primitive.
         //------------------------------
+        // luoyouren:
         if(debug)
         {
             Drawing.drawPrimitive(
@@ -1458,6 +1501,56 @@ public class CameraFragment extends Fragment implements SensorEventListener
             );
         }
         mSurfaceView.getHolder().getSurface().unlockCanvasAndPost(canvas);
+    }
+
+
+    private float	mRealTimeFrame; //实时帧率
+    private float	mAverageFrame; //平均帧率
+    private float	mAllFrame;
+    private int		mFrameCount;
+    private long	mLastTime = 0;
+    String framerates;
+
+    private void updateFrameRates()
+    {
+
+        long time = System.currentTimeMillis();
+        if(mLastTime == 0){
+
+            this.mRealTimeFrame = 0;
+            this.mAverageFrame = 0;
+
+        }else{
+
+            this.mRealTimeFrame = 1000f /(time - mLastTime);
+            this.mAllFrame += mRealTimeFrame;
+            this.mFrameCount ++;
+            this.mAverageFrame = mAllFrame/mFrameCount;
+            if(mFrameCount > 400 ){
+                mFrameCount = 0;
+                mAllFrame = 0;
+            }
+
+        }
+        mLastTime = time;
+//        if(mFrameCount % 100 == 0){
+//
+//            framerates = "" + (int)(mAverageFrame*100)/100f;
+//            Log.d("frame","frame = " + framerates);
+//        }
+
+        framerates = "" + (int)(mRealTimeFrame*100)/100f;
+        Log.d("frame","frame = " + framerates);
+
+        // Update Android GUI.
+        getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+
+                info.setText(framerates);
+                info.setTextColor(Color.RED);
+            }
+        });
     }
 
 
@@ -1658,8 +1751,13 @@ public class CameraFragment extends Fragment implements SensorEventListener
         }
 
 
-        try { Object3D[] s=Loader.load3DS(getActivity().getAssets().open(n+".3ds"),1f);
-            Object3D j=Object3D.mergeAll(s); j.setTexture(n); j.setName(n); return j; }
+        try {
+            Object3D[] s=Loader.load3DS(getActivity().getAssets().open(n+".3ds"),1f);
+            Object3D j=Object3D.mergeAll(s);
+            j.setTexture(n);
+            j.setName(n);
+            return j;
+        }
         catch (Exception x) { return null; }
     }
 
@@ -1735,6 +1833,41 @@ public class CameraFragment extends Fragment implements SensorEventListener
 
     }
 
+    protected Object3D loadIronman()
+    {
+
+        Object3D renderObj = null;
+        AssetManager mgr = getActivity().getAssets();
+
+        Texture tx = new Texture(getResources().getDrawable(R.drawable.ironman_mask));//128x128
+
+        if (!TextureManager.getInstance().containsTexture("ironman_mask"))
+        {
+            TextureManager.getInstance().addTexture("ironman_mask", tx);
+        }
+
+        try {
+
+            Object3D[] objects = Loader.loadOBJ(mgr.open("ironman_mask.obj"),mgr.open("ironman_mask.mtl"), 6f);
+            renderObj = Object3D.mergeAll(objects);
+            renderObj.setName("ironman_mask");
+            renderObj.setTexture("ironman_mask");
+            renderObj.setSpecularLighting(false);
+            renderObj.setOrigin(new SimpleVector(0, 0, 0));
+            renderObj.setOrientation(new SimpleVector(0, 1, 0), new SimpleVector(0, 90, 0));
+            renderObj.scale(1.0f);
+            renderObj.strip();
+            renderObj.build();
+
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return renderObj;
+
+    }
+
     //-------------------------
     //Load plant, from blender .3ds export Z Forward Y Up.
     //--------------------------------
@@ -1785,22 +1918,57 @@ public class CameraFragment extends Fragment implements SensorEventListener
         Object3D renderObj = null;
         AssetManager mgr = getActivity().getAssets();
 
-            try {
+        try {
 
-                Object3D[] objects = Loader.load3DS(mgr.open("soccerball.3ds"), 1.0f);
-                renderObj = Object3D.mergeAll(objects);
-                renderObj.setName("ball");
-                renderObj.setSpecularLighting(false);
-                renderObj.setTexture("skinner");
-                renderObj.setOrigin(new SimpleVector(0, 0, 0));
-                renderObj.scale(1);
-                renderObj.strip();
-                renderObj.build();
+            Object3D[] objects = Loader.load3DS(mgr.open("soccerball.3ds"), 1.0f);
+            renderObj = Object3D.mergeAll(objects);
+            renderObj.setName("ball");
+            renderObj.setSpecularLighting(false);
+            renderObj.setTexture("skinner");
+            renderObj.setOrigin(new SimpleVector(0, 0, 0));
+            renderObj.scale(1);
+            renderObj.strip();
+            renderObj.build();
 
 
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return renderObj;
+
+    }
+
+    protected Object3D loadHouse()
+    {
+        Object3D renderObj = null;
+        AssetManager mgr = getActivity().getAssets();
+
+        Texture tx = new Texture(getResources().getDrawable(R.drawable.house1));//128x128
+        Texture tx1 = new Texture(getResources().getDrawable(R.drawable.house2));//128x128
+
+        if (!TextureManager.getInstance().containsTexture("house1"))
+        {
+            TextureManager.getInstance().addTexture("house1", tx);
+            TextureManager.getInstance().addTexture("house2", tx1);
+        }
+
+        try {
+
+            Object3D[] objects = Loader.loadOBJ(mgr.open("house.obj"),mgr.open("house.mtl"), 1.0f);
+            renderObj = Object3D.mergeAll(objects);
+            renderObj.setName("house");
+            renderObj.setTexture("house1");
+            renderObj.setSpecularLighting(false);
+            renderObj.setOrigin(new SimpleVector(0, 0, 0));
+            renderObj.scale(0.5f);
+            renderObj.strip();
+            renderObj.build();
+
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         return renderObj;
 
