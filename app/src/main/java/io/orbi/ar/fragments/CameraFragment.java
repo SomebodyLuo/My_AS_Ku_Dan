@@ -10,6 +10,7 @@ import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -103,16 +104,14 @@ import static android.hardware.camera2.CameraMetadata.LENS_FACING_BACK;
 import static android.opengl.GLSurfaceView.RENDERMODE_WHEN_DIRTY;
 
 
-public class CameraFragment extends Fragment implements SensorEventListener
+public class CameraFragment extends Fragment
 {
     private final String TAG = "luoyouren";
 
     public OnOrbiCompleteListener mListener;//call back to main activity
     public OnModelChangeListener modListener;//when model asset needs changing
 
-    static {
-        System.loadLibrary("native-lib");
-    }
+
 
     private final float[] mRotationQuaternion = new float[4];
     public RendererJPCT render;
@@ -124,29 +123,22 @@ public class CameraFragment extends Fragment implements SensorEventListener
     TrackerState mTrackerState = TrackerState.IMAGE_DETECTION;
 
     private GLSurfaceView glSurfaceView;
-    private CameraDevice mCameraDevice;
-    private CameraCaptureSession mCaptureSession;
 
-    private ImageReader mImageReader;
-    private CaptureRequest.Builder mPreviewRequestBuilder;
-    private CaptureRequest mPreviewRequest;
 
     private Size mCameraPreviewSize = new Size(1280, 720);//1920, 1080
     //(1280, 720);
 
-    private Semaphore mCameraOpenCloseLock = new Semaphore(1);
-    private CameraSurfaceView mSurfaceView;
 
-    private SensorManager mSensorManager;
-    private Sensor mSensor;
+    private CameraSurfaceView mSurfaceView;
 
     private TextView mStatusLabel;
 
     private ArrayList<Point> trackedCorners = new ArrayList<>(4);
-    private HandlerThread mBackgroundThread;
-    private Handler mBackgroundHandler;
+
 
     private TrackerState state;
+
+    //luoyouren
 
     private SurfaceHolder.Callback mSurfaceCallback = new SurfaceHolder.Callback()
     {
@@ -270,6 +262,9 @@ public class CameraFragment extends Fragment implements SensorEventListener
             }
         }
     };
+
+
+
     private final CameraDevice.StateCallback mStateCallback = new CameraDevice.StateCallback() {
 
         @Override
@@ -279,12 +274,7 @@ public class CameraFragment extends Fragment implements SensorEventListener
 
             mCameraDevice = cameraDevice;
 
-            // Get the KudanCV API key from the Android Manifest.
-            String apiKey = getAPIKey();
 
-            // Initialise the native tracking objects.
-            initialiseImageTracker(apiKey, mCameraPreviewSize.getWidth(), mCameraPreviewSize.getHeight());
-            initialiseArbiTracker(apiKey, mCameraPreviewSize.getWidth(), mCameraPreviewSize.getHeight());
 
             //-------------------------------------------------------
             // Add the image trackable to the native image tracker.
@@ -308,32 +298,13 @@ public class CameraFragment extends Fragment implements SensorEventListener
         @Override
         public void onDisconnected(@NonNull CameraDevice cameraDevice) {
 
-            Log.i("CameraDevice", "CameraDevice Disconnected.");
 
-            // Release the Semaphore to allow the CameraDevice to be closed.
-            mCameraOpenCloseLock.release();
-
-            cameraDevice.close();
-            mCameraDevice = null;
         }
 
         @Override
         public void onError(@NonNull CameraDevice cameraDevice, int error) {
 
-            Log.e("CameraDevice", "CameraDevice Error.");
 
-            // Release the Semaphore to allow the CameraDevice to be closed.
-            mCameraOpenCloseLock.release();
-
-            cameraDevice.close();
-            mCameraDevice = null;
-
-            // Stop the activity.
-            Activity activity = getActivity();
-
-            if (null != activity) {
-                activity.finish();
-            }
         }
     };
 
@@ -641,56 +612,7 @@ public class CameraFragment extends Fragment implements SensorEventListener
             }
         });
 
-        //-----------------
-        //Models
-        //-----------------
-        Spinner spinner = (Spinner) view.findViewById(R.id.model_spinner);
-        ArrayAdapter adapter = ArrayAdapter.createFromResource(getActivity(), R.array.model_array, R.layout.spinner_item);
-        adapter.setDropDownViewResource(R.layout.spinner_dropdown_item);
-        spinner.setAdapter(adapter);
-        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener()
-        {
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
 
-                String item = parent.getItemAtPosition(position).toString();
-
-                //swap models
-                if(render != null && !item.equals("DEFAULT"))
-                {
-                    Toast.makeText(parent.getContext(), "Selected: " + item, Toast.LENGTH_LONG).show();
-
-                    int w_model = 1;
-
-                    if(item.equals("PLANT"))
-                    {
-                        w_model = 1;
-                    }
-                    if(item.equals("BALL"))
-                    {
-                        w_model = 2;
-                        render.replaceModel(loadObj());
-                    }
-                    if(item.equals("ROBOT"))
-                    {
-                        w_model = 3;
-                    }
-
-                    //mImageReader = null;
-                    //render = null;
-
-                    //Send back to main activity to remove fragment and recreate with diff model load
-//                    modListener.onModelChanged(w_model);
-
-                }
-
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent)
-            {
-
-            }
-        });
 
 
         //-----------------------
@@ -926,295 +848,14 @@ public class CameraFragment extends Fragment implements SensorEventListener
         }
     }
 
-    //-------------------------
-    //API Key
-    //-------------------------
-    private String getAPIKey()
-    {
 
-        String appPackageName = getActivity().getPackageName();
-
-        try
-        {
-            ApplicationInfo app = getActivity().getPackageManager().getApplicationInfo(appPackageName, PackageManager.GET_META_DATA);
-
-            Bundle bundle = app.metaData;
-
-            String apiKeyID = "eu.kudan.ar.API_KEY";
-
-            if (bundle == null) {
-                throw new RuntimeException("No manifest meta-data tags exist.\n\nMake sure the AndroidManifest.xml file contains a <meta-data\n\tandroid:name=\"" + apiKeyID + "\"\n\tandroid:value=\"${YOUR_API_KEY}\"></meta-data>\n");
-            }
-
-            String apiKey = bundle.getString(apiKeyID);
-
-            if (apiKey == null) {
-                throw new RuntimeException("Could not get API Key from Android Manifest meta-data.\n\nMake sure the AndroidManifest.xml file contains a <meta-data\n\tandroid:name=\"" + apiKeyID + "\"\n\tandroid:value=\"${YOUR_API_KEY}\"></meta-data>\n");
-            }
-
-            if (apiKey.isEmpty()) {
-                throw new RuntimeException("Your API Key from Android Manifest meta-data appears to be empty.\n\nMake sure the AndroidManifest.xml file contains a <meta-data\n\tandroid:name=\"" + apiKeyID + "\"\n\tandroid:value=\"${YOUR_API_KEY}\"></meta-data>\n");
-            }
-
-            return apiKey;
-
-        } catch (PackageManager.NameNotFoundException e) {
-            throw new RuntimeException("Cannot find Package with name \"" + appPackageName + "\". Cannot load API key.");
-        }
-    }
 
     //endregion
 
-    //region Setup and Teardown Methods
-
-    //--------------------------------
-    //Sets up a new background thread
-    // and it's Handler.
-    //--------------------------------
-    private void setupBackgroundThread()
-    {
-
-        mBackgroundThread = new HandlerThread("BackgroundCameraThread");
-        mBackgroundThread.start();
-        mBackgroundHandler = new Handler(mBackgroundThread.getLooper());
-    }
 
 
-    //--------------------------------------------------
-    //Sets up a new CameraDevice check camera permissions
-    //----------------------------------------------------
-    private void setupCameraDevice()
-    {
-
-        // Check for camera permissions.
-        if (ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED)
-        {
-            throw new RuntimeException("Camera permissions must be granted to function.");
-        }
-
-        //setup camera manager
-        CameraManager manager = (CameraManager) getActivity().getSystemService(Context.CAMERA_SERVICE);
 
 
-        try {
-            String[] cameras = manager.getCameraIdList();
-
-            // Find back-facing camera.
-            for (String camera : cameras) {
-
-                CameraCharacteristics cameraCharacteristics = manager.getCameraCharacteristics(camera);
-
-                // Reject all cameras but the back-facing camera.
-                if (cameraCharacteristics.get(CameraCharacteristics.LENS_FACING) != LENS_FACING_BACK) {
-                    continue;
-                }
-
-                try {
-                    if (!mCameraOpenCloseLock.tryAcquire(3000, TimeUnit.MILLISECONDS)) {
-                        throw new RuntimeException(("Camera lock cannot be acquired during opening."));
-                    }
-
-                    // Open camera. Events are sent to the mStateCallback listener and handled on the background thread.
-                    manager.openCamera(camera, mStateCallback, mBackgroundHandler);
-
-                    // Open one camera only.
-                    return;
-
-                } catch (InterruptedException e) {
-                    throw new RuntimeException("Camera open/close semaphore cannot be acquired");
-                }
-            }
-
-        } catch (CameraAccessException e) {
-            throw new RuntimeException("Cannot access camera.");
-        }
-    }
-
-    //--------------------------------------------------------------
-    // Creates a new CameraCaptureSession for the camera preview.
-    //-------------------------------------------------------------
-    private void createCameraPreviewSession()
-    {
-
-        try
-        {
-
-            // Create an ImageReader instance that buffers two camera images so there is always room for most recent camera frame.
-            // mImageReader = ImageReader.newInstance(mCameraPreviewSize.getWidth(), mCameraPreviewSize.getHeight(), ImageFormat.YUV_420_888, 2);
-            mImageReader = ImageReader.newInstance(mCameraPreviewSize.getWidth(), mCameraPreviewSize.getHeight(), ImageFormat.YUV_420_888, 2);
-
-            // Handle all new camera frames received on the background thread.
-            // mImageAvailListener非常关键！
-            mImageReader.setOnImageAvailableListener(mImageAvailListener, mBackgroundHandler);
-
-            // Set up a CaptureRequest.Builder with the output Surface of the ImageReader.
-            mPreviewRequestBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
-
-            // 将mImageReader加入到Preview Request队列中
-            mPreviewRequestBuilder.addTarget(mImageReader.getSurface());
-
-            // Create the camera preview CameraCaptureSession.
-            mCameraDevice.createCaptureSession(Arrays.asList(mImageReader.getSurface()), new CameraCaptureSession.StateCallback() {
-
-                        @Override
-                        public void onConfigured(@NonNull CameraCaptureSession cameraCaptureSession)
-                        {
-                            // The camera is already closed
-                            if (mCameraDevice == null)
-                            {
-                                return;
-                            }
-
-                            // When the session is ready, we start displaying the preview.
-                            mCaptureSession = cameraCaptureSession;
-
-                            try
-                            {
-                                // Auto focus should be continuous for camera preview.
-                                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_VIDEO);//CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE
-
-                                // Finally, start displaying the camera preview.
-                                mPreviewRequest = mPreviewRequestBuilder.build();
-                                mCaptureSession.setRepeatingRequest(mPreviewRequest, null, mBackgroundHandler);
-
-                                // Release the Semaphore to allow the CameraDevice to be closed.
-                                mCameraOpenCloseLock.release();
-
-                            } catch (CameraAccessException e) {
-                                throw new RuntimeException("Cannot access camera during CameraCaptureSession setup.");
-                            }
-                        }
-
-                        @Override
-                        public void onConfigureFailed(
-                                @NonNull CameraCaptureSession cameraCaptureSession) {
-                            throw new RuntimeException("Camera capture session configuration failed.");
-                        }
-                    }, null
-            );
-        } catch (CameraAccessException e) {
-            throw new RuntimeException("Cannot access camera during CameraCaptureSession setup.");
-        }
-    }
-
-    //-------------------------------------------------------
-    //Tears down and closes the camera device and session.
-    //------------------------------------------------------
-    private void teardownCamera() {
-
-        try {
-            // Prevent the teardown from occuring at the same time as setup.
-            mCameraOpenCloseLock.acquire();
-
-            if (mCaptureSession != null) {
-                mCaptureSession.close();
-                mCaptureSession = null;
-            }
-            if (mCameraDevice != null) {
-                mCameraDevice.close();
-                mCameraDevice = null;
-            }
-            if (mImageReader != null) {
-                mImageReader.close();
-                mImageReader = null;
-            }
-
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } finally {
-            mCameraOpenCloseLock.release();
-        }
-    }
-
-    //---------------------------------------
-    // Stops the background thread and handler.
-    //-----------------------------------------
-    private void teardownBackgroundThread() {
-
-        mBackgroundThread.quitSafely();
-        try {
-            mBackgroundThread.join();
-            mBackgroundThread = null;
-            mBackgroundHandler = null;
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
-
-
-    //-----------------------------------------
-    //Setup the rotation sensor for receiving
-    //data on the device orientation status.
-    //----------------------------------------
-    private void setupRotationSensor()
-    {
-        mSensorManager = (SensorManager) getActivity().getSystemService(Context.SENSOR_SERVICE);
-        ImprovedOrientationSensor2Provider orientationProvider = new ImprovedOrientationSensor2Provider(mSensorManager);
-        render.setOrientationProvider(orientationProvider);
-        orientationProvider.start();
-
-        mSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
-        mSensorManager.registerListener(this, mSensor, 30000);
-    }
-    //-----------------------------
-    //Sensor events
-    //----------------------------
-    @Override
-    public void onSensorChanged(SensorEvent event)
-    {
-
-        if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR)
-        {
-            getActivity().runOnUiThread(new Runnable()
-            {
-                @Override
-                public void run()
-                {
-                    if (enviro != null)
-                    {
-                        int gazi = (int) Math.round(enviro.getAzimuth());
-                        int zazi = (int) Math.round(enviro.getZenithAngle());
-
-                        output.setText("AZI: " + gazi + " | ZEN: " + zazi + " | " + LocationDetection.loci);
-                    }
-                }
-            });
-
-
-            // Get the current device rotation.
-            float temp1[] = new float[16];
-            float temp2[] = new float[16];
-
-            SensorManager.getRotationMatrixFromVector(temp1, event.values);
-
-            // Remap the device rotation to the arbitracker coordinate system.
-            SensorManager.remapCoordinateSystem(temp1, SensorManager.AXIS_MINUS_Y, SensorManager.AXIS_MINUS_X, temp2);
-
-            // Convert the rotation matrix into a quaternion.
-            double w = Math.sqrt(1.0 + temp2[0] + temp2[5] + temp2[10]) / 2.0;
-            double w4 = (4.0 * w);
-            double x = (temp2[9] - temp2[6]) / w4;
-            double y = (temp2[2] - temp2[8]) / w4;
-            double z = (temp2[4] - temp2[1]) / w4;
-
-            mRotationQuaternion[0] = (float) w;
-            mRotationQuaternion[1] = (float) x;
-            mRotationQuaternion[2] = (float) y;
-            mRotationQuaternion[3] = (float) z;
-        }
-    }
-
-    @Override
-    public void onAccuracyChanged(Sensor sensor, int accuracy) {
-    }
-
-     //Stops the rotation sensor.
-    private void teardownRotationSensor()
-    {
-        mSensorManager.unregisterListener(this);
-        mSensorManager = null;
-        mSensor = null;
-    }
 
     //---------------------------------------------
     //Processes tracking on a camera frame's data
@@ -1268,7 +909,7 @@ public class CameraFragment extends Fragment implements SensorEventListener
             mRotationQuaternion[3] = z;
 
             // Native call to the markerless tracking object.  channels / number of channels in the image (mono, colour, colour+alpha)
-            trackedData = processArbiTrackerFrame(data, mRotationQuaternion, width, height, 1, 0, false);
+            trackedData = NativeTracker.processArbiTrackerFrame(data, mRotationQuaternion, width, height, 1, 0, false);
 
             Log.i(TAG, "processArbiTrackerFrame over");
         }
@@ -1504,54 +1145,7 @@ public class CameraFragment extends Fragment implements SensorEventListener
     }
 
 
-    private float	mRealTimeFrame; //实时帧率
-    private float	mAverageFrame; //平均帧率
-    private float	mAllFrame;
-    private int		mFrameCount;
-    private long	mLastTime = 0;
-    String framerates;
 
-    private void updateFrameRates()
-    {
-
-        long time = System.currentTimeMillis();
-        if(mLastTime == 0){
-
-            this.mRealTimeFrame = 0;
-            this.mAverageFrame = 0;
-
-        }else{
-
-            this.mRealTimeFrame = 1000f /(time - mLastTime);
-            this.mAllFrame += mRealTimeFrame;
-            this.mFrameCount ++;
-            this.mAverageFrame = mAllFrame/mFrameCount;
-            if(mFrameCount > 400 ){
-                mFrameCount = 0;
-                mAllFrame = 0;
-            }
-
-        }
-        mLastTime = time;
-//        if(mFrameCount % 100 == 0){
-//
-//            framerates = "" + (int)(mAverageFrame*100)/100f;
-//            Log.d("frame","frame = " + framerates);
-//        }
-
-        framerates = "" + (int)(mRealTimeFrame*100)/100f;
-        Log.d("frame","frame = " + framerates);
-
-        // Update Android GUI.
-        getActivity().runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-
-                info.setText(framerates);
-                info.setTextColor(Color.RED);
-            }
-        });
-    }
 
 
 
@@ -1561,7 +1155,7 @@ public class CameraFragment extends Fragment implements SensorEventListener
     public void addTrackable(int resourceID, String name)
     {
         Bitmap image = BitmapFactory.decodeResource(getResources(), resourceID);
-        boolean success = addTrackableToImageTracker(image, name);
+        boolean success = NativeTracker.addTrackableToImageTracker(image, name);
 
         if (!success)
         {
@@ -1569,40 +1163,7 @@ public class CameraFragment extends Fragment implements SensorEventListener
         }
     }
 
-    //--------------------------
-    //Native Methods
-    //--------------------------
-    private native void initialiseImageTracker(String key, int width, int height);
-    private native void initialiseArbiTracker(String key, int width, int height);
-    private native void startArbiTracker(boolean startFromImageTrackable);
-    private native void stopArbiTracker();
 
-    private native boolean addTrackableToImageTracker(
-            Bitmap image,
-            String name);
-
-    private native float[] processImageTrackerFrame(
-            byte[] image,
-            int width,
-            int height,
-            int channels,
-            int padding,
-            boolean requiresFlip);
-
-    private native float[] processArbiTrackerFrame(
-            byte[] image,
-            float[] gyroOrientation,
-            int width,
-            int height,
-            int channels,
-            int padding,
-            boolean requiresFlip);
-
-    enum TrackerState {
-        IMAGE_DETECTION,
-        IMAGE_TRACKING,
-        ARBITRACK
-    }
 
     //-----------------------------
     //decode Y, U, and V values on the YUV 420 & Split RGBA
@@ -1666,9 +1227,6 @@ public class CameraFragment extends Fragment implements SensorEventListener
 
     }
 
-
-
-
         // using existing renderscript method, seems a bit slower?
     public Allocation renderScriptNV21ToRGBA888(RenderScript rs, int width, int height, byte[] nv21) {
 
@@ -1687,293 +1245,7 @@ public class CameraFragment extends Fragment implements SensorEventListener
         return out;
     }
 
-    protected Object3D loadTest()
-    {
-        Object3D myObject = Primitives.getCube(5);
-        RGBColor cubeColour = new RGBColor(222, 120, 40);
-        myObject.setAdditionalColor(cubeColour);
-        myObject.setName("testCube");
-        myObject.build();
-        return myObject;
-    }
-        /*
-    protected Object3D loadTable()
-    {
-        //Wood Texture 2.JPG
-        //Wood Texture.jpg
 
-        Texture tx = new Texture(getResources().getDrawable(R.drawable.woodtexture));
-        Texture tx1 = new Texture(getResources().getDrawable(R.drawable.woodtexturetwo));
-
-        if (!TextureManager.getInstance().containsTexture("Wood Texture.jpg"))
-        {
-            TextureManager.getInstance().addTexture("Wood Texture.jpg", tx);
-        }
-        if (!TextureManager.getInstance().containsTexture("Wood Texture 2.JPG"))
-        {
-            TextureManager.getInstance().addTexture("Wood Texture 2.JPG", tx1);
-        }
-
-        Object3D renderObj = null;
-        AssetManager mgr = getActivity().getAssets();
-
-        try {
-
-            Object3D[] objects = Loader.load3DS(mgr.open("coffeetable.3ds"), 5.0f);
-            renderObj = Object3D.mergeAll(objects);
-            renderObj.setName("table");
-            renderObj.setTexture("Wood Texture.jpg");
-            renderObj.setTexture("Wood Texture 2.JPG");
-            renderObj.setSpecularLighting(false);
-            renderObj.setOrigin(new SimpleVector(0, 0, 0));
-            renderObj.scale(5);
-            renderObj.strip();
-            renderObj.build();
-
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return renderObj;
-
-    }
-    */
-    //Loader.loadOBJ(getResources().getAssets().open("cube.obj"), null, 20)
-
-    Object3D loadPlant01()
-    {
-        String n="plant01";
-        if (!TextureManager.getInstance().containsTexture("plant01"))
-        {
-            Texture tx = new Texture(getResources().getDrawable(R.drawable.plant01),false);
-            TextureManager.getInstance().addTexture(n,tx);
-        }
-
-
-        try {
-            Object3D[] s=Loader.load3DS(getActivity().getAssets().open(n+".3ds"),1f);
-            Object3D j=Object3D.mergeAll(s);
-            j.setTexture(n);
-            j.setName(n);
-            return j;
-        }
-        catch (Exception x) { return null; }
-    }
-
-
-
-    protected Object3D loadTable()
-    {
-
-        Object3D renderObj = null;
-        AssetManager mgr = getActivity().getAssets();
-
-        Texture tx = new Texture(getResources().getDrawable(R.drawable.woodone));//128x128
-        Texture tx1 = new Texture(getResources().getDrawable(R.drawable.woodtwo));//128x128
-
-        if (!TextureManager.getInstance().containsTexture("Wood_1"))
-        {
-            TextureManager.getInstance().addTexture("Wood_1", tx);
-            TextureManager.getInstance().addTexture("Wood_2", tx1);
-        }
-
-        try {
-
-            Object3D[] objects = Loader.loadOBJ(mgr.open("coffeetable.obj"),mgr.open("coffeetable.mtl"), 9f);
-            renderObj = Object3D.mergeAll(objects);
-            renderObj.setName("table");
-            renderObj.setTexture("Wood_2");
-            renderObj.setSpecularLighting(false);
-            renderObj.setOrigin(new SimpleVector(0, 0, 0));
-            renderObj.scale(9);
-            renderObj.strip();
-            renderObj.build();
-
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return renderObj;
-
-    }
-
-    protected Object3D loadPlant()
-    {
-
-        Object3D renderObj = null;
-        AssetManager mgr = getActivity().getAssets();
-
-        Texture tx = new Texture(getResources().getDrawable(R.drawable.plant));//128x128
-
-        if (!TextureManager.getInstance().containsTexture("plant"))
-        {
-            TextureManager.getInstance().addTexture("plant", tx);
-        }
-
-        try {
-
-            Object3D[] objects = Loader.loadOBJ(mgr.open("plant.obj"),null, 4f);
-            renderObj = Object3D.mergeAll(objects);
-            renderObj.setName("table");
-            renderObj.setTexture("plant");
-            renderObj.setSpecularLighting(false);
-            renderObj.setOrigin(new SimpleVector(0, 0, 0));
-            renderObj.scale(4);
-            renderObj.strip();
-            renderObj.build();
-
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return renderObj;
-
-    }
-
-    protected Object3D loadIronman()
-    {
-
-        Object3D renderObj = null;
-        AssetManager mgr = getActivity().getAssets();
-
-        Texture tx = new Texture(getResources().getDrawable(R.drawable.ironman_mask));//128x128
-
-        if (!TextureManager.getInstance().containsTexture("ironman_mask"))
-        {
-            TextureManager.getInstance().addTexture("ironman_mask", tx);
-        }
-
-        try {
-
-            Object3D[] objects = Loader.loadOBJ(mgr.open("ironman_mask.obj"),mgr.open("ironman_mask.mtl"), 6f);
-            renderObj = Object3D.mergeAll(objects);
-            renderObj.setName("ironman_mask");
-            renderObj.setTexture("ironman_mask");
-            renderObj.setSpecularLighting(false);
-            renderObj.setOrigin(new SimpleVector(0, 0, 0));
-            renderObj.setOrientation(new SimpleVector(0, 1, 0), new SimpleVector(0, 90, 0));
-            renderObj.scale(1.0f);
-            renderObj.strip();
-            renderObj.build();
-
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return renderObj;
-
-    }
-
-    //-------------------------
-    //Load plant, from blender .3ds export Z Forward Y Up.
-    //--------------------------------
-    protected Object3D loadPlant2()
-    {
-        Texture tx = new Texture(getResources().getDrawable(R.drawable.indoor));//128x128
-
-        if (!TextureManager.getInstance().containsTexture("indoor"))
-        {
-            TextureManager.getInstance().addTexture("indoor", tx);
-        }
-
-        Object3D renderObj = null;
-        AssetManager mgr = getActivity().getAssets();
-
-        try {
-
-            Object3D[] objects = Loader.load3DS(mgr.open("myplant.3ds"), 6.0f);
-            renderObj = Object3D.mergeAll(objects);
-            renderObj.setName("ball");
-            renderObj.setSpecularLighting(false);
-            renderObj.setTexture("indoor");
-            renderObj.setOrigin(new SimpleVector(0, 0, 0));
-            renderObj.scale(6);
-            renderObj.strip();
-            renderObj.build();
-
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return renderObj;
-
-    }
-
-
-
-    protected Object3D loadObj()
-    {
-        Texture tx = new Texture(getResources().getDrawable(R.drawable.ballskin2));//128x128
-
-        if (!TextureManager.getInstance().containsTexture("skinner"))
-        {
-            TextureManager.getInstance().addTexture("skinner", tx);
-        }
-
-        Object3D renderObj = null;
-        AssetManager mgr = getActivity().getAssets();
-
-        try {
-
-            Object3D[] objects = Loader.load3DS(mgr.open("soccerball.3ds"), 1.0f);
-            renderObj = Object3D.mergeAll(objects);
-            renderObj.setName("ball");
-            renderObj.setSpecularLighting(false);
-            renderObj.setTexture("skinner");
-            renderObj.setOrigin(new SimpleVector(0, 0, 0));
-            renderObj.scale(1);
-            renderObj.strip();
-            renderObj.build();
-
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return renderObj;
-
-    }
-
-    protected Object3D loadHouse()
-    {
-        Object3D renderObj = null;
-        AssetManager mgr = getActivity().getAssets();
-
-        Texture tx = new Texture(getResources().getDrawable(R.drawable.house1));//128x128
-        Texture tx1 = new Texture(getResources().getDrawable(R.drawable.house2));//128x128
-
-        if (!TextureManager.getInstance().containsTexture("house1"))
-        {
-            TextureManager.getInstance().addTexture("house1", tx);
-            TextureManager.getInstance().addTexture("house2", tx1);
-        }
-
-        try {
-
-            Object3D[] objects = Loader.loadOBJ(mgr.open("house1.obj"),mgr.open("house.mtl"), 1.0f);
-            renderObj = Object3D.mergeAll(objects);
-            renderObj.setName("house");
-            renderObj.setTexture("house1");
-            renderObj.setSpecularLighting(false);
-            renderObj.setOrigin(new SimpleVector(0, 0, 0));
-            renderObj.scale(0.2f);
-            renderObj.setOrientation(new SimpleVector(0, 0, 1), new SimpleVector(-10, 10, 0));
-            renderObj.strip();
-            renderObj.build();
-
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return renderObj;
-
-    }
 
     private void sendToast(String str)
     {

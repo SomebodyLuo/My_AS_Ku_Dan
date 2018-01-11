@@ -71,6 +71,25 @@ public class MainActivity extends Activity implements OnOrbiCompleteListener,OnM
         overrideFonts(this,getWindow().getDecorView());
     }
 
+    /**
+     * Request code for camera permissions.
+     */
+    private static final int REQUEST_CAMERA_PERMISSIONS = 1;
+
+    /**
+     * Permissions required to take a picture.
+     */
+    private static final String[] CAMERA_PERMISSIONS = {
+            Manifest.permission.CAMERA,
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.CHANGE_NETWORK_STATE,
+            Manifest.permission.ACCESS_WIFI_STATE,
+
+    };
+
     //-------------------------------
     //Check Permissions & if set
     //-------------------------------
@@ -79,11 +98,7 @@ public class MainActivity extends Activity implements OnOrbiCompleteListener,OnM
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED)
         {
 
-            ActivityCompat.requestPermissions(this, new String[] {
-                    Manifest.permission.CAMERA, Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION,
-                    Manifest.permission.CHANGE_NETWORK_STATE,Manifest.permission.ACCESS_WIFI_STATE,Manifest.permission.READ_PHONE_STATE,Manifest.permission.WRITE_EXTERNAL_STORAGE
-                    },
-                    1);
+            ActivityCompat.requestPermissions(this, CAMERA_PERMISSIONS, REQUEST_CAMERA_PERMISSIONS);
         }
         else
         {

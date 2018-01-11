@@ -34,7 +34,7 @@ static std::shared_ptr<KudanImageTracker> imageTracker;
 static std::shared_ptr<KudanArbiTracker> arbiTracker;
 static int arbitrackScale;
 
-void Java_io_orbi_ar_fragments_CameraFragment_initialiseImageTracker(
+void Java_io_orbi_ar_fragments_NativeTracker_initialiseImageTracker(
         JNIEnv *env,
         jobject /* this */,
         jstring key,
@@ -70,7 +70,7 @@ void Java_io_orbi_ar_fragments_CameraFragment_initialiseImageTracker(
     env->ReleaseStringUTFChars(key, keyStr);
 }
 
-void Java_io_orbi_ar_fragments_CameraFragment_initialiseArbiTracker(
+void Java_io_orbi_ar_fragments_NativeTracker_initialiseArbiTracker(
         JNIEnv *env,
         jobject /* this */,
         jstring key,
@@ -100,7 +100,7 @@ void Java_io_orbi_ar_fragments_CameraFragment_initialiseArbiTracker(
     env->ReleaseStringUTFChars(key, keyStr);
 }
 
-void Java_io_orbi_ar_fragments_CameraFragment_startArbiTracker(
+void Java_io_orbi_ar_fragments_NativeTracker_startArbiTracker(
         JNIEnv *env,
         jobject /* this */,
         jboolean startFromImageTrackable)
@@ -136,14 +136,14 @@ void Java_io_orbi_ar_fragments_CameraFragment_startArbiTracker(
     arbiTracker->start(startPosition, startOrientation);
 }
 
-void Java_io_orbi_ar_fragments_CameraFragment_stopArbiTracker(
+void Java_io_orbi_ar_fragments_NativeTracker_stopArbiTracker(
         JNIEnv *env,
         jobject /* this */) {
 
     arbiTracker->stop();
 }
 
-jboolean Java_io_orbi_ar_fragments_CameraFragment_addTrackableToImageTracker(
+jboolean Java_io_orbi_ar_fragments_NativeTracker_addTrackableToImageTracker(
         JNIEnv *env,
         jobject /* this */,
         jobject bitmap,
@@ -200,7 +200,7 @@ jboolean Java_io_orbi_ar_fragments_CameraFragment_addTrackableToImageTracker(
     }
 }
 
-jfloatArray Java_io_orbi_ar_fragments_CameraFragment_processImageTrackerFrame(
+jfloatArray Java_io_orbi_ar_fragments_NativeTracker_processImageTrackerFrame(
         JNIEnv *env,
         jobject /* this */,
         jbyteArray image,
@@ -291,7 +291,7 @@ jfloatArray Java_io_orbi_ar_fragments_CameraFragment_processImageTrackerFrame(
     return NULL;
 }
 
-jfloatArray Java_io_orbi_ar_fragments_CameraFragment_processArbiTrackerFrame(
+jfloatArray Java_io_orbi_ar_fragments_NativeTracker_processArbiTrackerFrame(
         JNIEnv *env,
         jobject /* this */,
         jbyteArray image,
