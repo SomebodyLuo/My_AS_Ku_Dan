@@ -832,7 +832,7 @@ public class CameraFragment extends Fragment implements SensorEventListener
         {
             Log.i("@@INDEX",":Plant");
             sendToast("Plant Loaded");
-            render.init(loadIronman());
+            render.init(loadHouse());
             render.setLightColor(light1, 255, 255, 255);
             render.setSunLum(210);//set ambient init light
         }
@@ -1955,13 +1955,14 @@ public class CameraFragment extends Fragment implements SensorEventListener
 
         try {
 
-            Object3D[] objects = Loader.loadOBJ(mgr.open("house.obj"),mgr.open("house.mtl"), 1.0f);
+            Object3D[] objects = Loader.loadOBJ(mgr.open("house1.obj"),mgr.open("house.mtl"), 1.0f);
             renderObj = Object3D.mergeAll(objects);
             renderObj.setName("house");
             renderObj.setTexture("house1");
             renderObj.setSpecularLighting(false);
             renderObj.setOrigin(new SimpleVector(0, 0, 0));
-            renderObj.scale(0.5f);
+            renderObj.scale(0.2f);
+            renderObj.setOrientation(new SimpleVector(0, 0, 1), new SimpleVector(-10, 10, 0));
             renderObj.strip();
             renderObj.build();
 
