@@ -586,7 +586,7 @@ public class CameraFragment extends Fragment
         }
     }
 
-    private ObjLoader objLoader = new ObjLoader(getResources(), getActivity());
+    private ObjLoader objLoader = null;
     //----------------------------------
     //Init render and gl
     //----------------------------------
@@ -613,6 +613,8 @@ public class CameraFragment extends Fragment
         light1 = render.addSun(); // you can add 8 lights at most, return -1 if error
         //Chameleon color
         light2 = render.addSun(); // you can add 8 lights at most, return -1 if error
+
+        objLoader = new ObjLoader(getResources(), getActivity());
 
         //which model to load and settings
         if(model_index == 0 || model_index == 1)

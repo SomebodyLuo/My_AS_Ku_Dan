@@ -68,7 +68,6 @@ public class MainActivity extends Activity implements OnOrbiCompleteListener,OnM
     protected void onStart()
     {
         super.onStart();
-        overrideFonts(this,getWindow().getDecorView());
     }
 
     /**
@@ -182,55 +181,5 @@ public class MainActivity extends Activity implements OnOrbiCompleteListener,OnM
     }
 
 
-    //----------------------------------
-    //Font override for whole project
-    //-----------------------------------
-    private void overrideFonts(final Context context, final View v)
-    {
-        try
-        {
-            if (v instanceof ViewGroup)
-            {
-                ViewGroup vg = (ViewGroup) v;
-                for (int i = 0; i < vg.getChildCount(); i++)
-                {
-                    View child = vg.getChildAt(i);
-                    overrideFonts(context, child);
-                }
-            } else if (v instanceof TextView) {
-                ((TextView) v).setTypeface(typeface);
-            } else if (v instanceof EditText ) {
-                ((EditText) v).setTypeface(typeface);
-            } else if (v instanceof Button) {
-                ((Button) v).setTypeface(typeface);
-            }
-            else if (v instanceof Switch)
-            {
-                ((Switch) v).setTypeface(typeface);
-            }
-            else if (v instanceof Spinner)
-            {
-                ((Switch) v).setTypeface(typeface);
-            }
-            else if (v instanceof SpinnerAdapter)
-            {
-                ((Switch) v).setTypeface(typeface);
-            }
-            else if (v instanceof CheckedTextView)
-            {
-                ((Switch) v).setTypeface(typeface);
-            }
-            //CheckedTextView
-        }
-        catch (Exception e)
-        {
-        }
-    }
-    /*
-    JPCT REMOVE AND ADD MODEL
-    getCurrentScene().removeChild(myCurrentObj);
-ObjParser parser = new ObjParser(this, 'mydir\myfile.obj');
-parser.parse();
-getCurrentScene().addChild(parser.getParsedObject());
-     */
+
 }
