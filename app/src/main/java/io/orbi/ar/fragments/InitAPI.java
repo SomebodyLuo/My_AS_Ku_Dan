@@ -17,13 +17,13 @@ public class InitAPI {
     private Size mPreviewSize;
     private Context mContext = null;
 
-    private void InitAPI(Context context, Size previewSize)
+    public InitAPI(Context context, Size previewSize)
     {
         mPreviewSize = previewSize;
         mContext = context;
     }
 
-    private void Initialise()
+    public void Initialise()
     {
         // Get the KudanCV API key from the Android Manifest.
         String apiKey = getAPIKey();

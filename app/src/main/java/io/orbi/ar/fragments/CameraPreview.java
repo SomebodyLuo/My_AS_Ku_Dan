@@ -54,9 +54,12 @@ public class CameraPreview {
 
     private Semaphore mCameraOpenCloseLock = new Semaphore(1);
 
+    // luoyouren: 重要！
+    private ImageReader.OnImageAvailableListener mImageAvailListener;
+
     private Context mContext = null;
     private Size mPreviewSize = null;
-    private void CameraPreview(Context context, Size previewSize)
+    public CameraPreview(Context context, Size previewSize)
     {
         mContext = context;
         mPreviewSize = previewSize;
@@ -97,12 +100,6 @@ public class CameraPreview {
             camera.close();
             mCameraDevice = null;
 
-            // Stop the activity.
-            Activity activity = getActivity();
-
-            if (null != activity) {
-                activity.finish();
-            }
         }
     };
 
@@ -125,11 +122,16 @@ public class CameraPreview {
 
     };
 
+    public void setImageAvailListener(ImageReader.OnImageAvailableListener listener)
+    {
+        mImageAvailListener = listener;
+    }
+
     /**
      * 初始化Camera2
      */
 //	@RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-    private void initCamera2() {
+    public void initCamera2() {
 
 
         //setup camera manager
@@ -174,70 +176,7 @@ public class CameraPreview {
     }
 
 
-//region Setup and Teardown Methods
 
-    //--------------------------------
-    //Sets up a new background thread
-    // and it's Handler.
-    //--------------------------------
-    private void setupBackgroundThread()
-    {
-
-        mBackgroundThread = new HandlerThread("BackgroundCameraThread");
-        mBackgroundThread.start();
-        mBackgroundHandler = new Handler(mBackgroundThread.getLooper());
-    }
-
-
-
-
-
-
-
-    //---------------------------------------
-    // Stops the background thread and handler.
-    //-----------------------------------------
-    private void teardownBackgroundThread() {
-
-        mBackgroundThread.quitSafely();
-        try {
-            mBackgroundThread.join();
-            mBackgroundThread = null;
-            mBackgroundHandler = null;
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
-
-
-    //-------------------------------------------------------
-    //Tears down and closes the camera device and session.
-    //------------------------------------------------------
-    private void teardownCamera() {
-
-        try {
-            // Prevent the teardown from occuring at the same time as setup.
-            mCameraOpenCloseLock.acquire();
-
-            if (mCaptureSession != null) {
-                mCaptureSession.close();
-                mCaptureSession = null;
-            }
-            if (mCameraDevice != null) {
-                mCameraDevice.close();
-                mCameraDevice = null;
-            }
-            if (mImageReader != null) {
-                mImageReader.close();
-                mImageReader = null;
-            }
-
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } finally {
-            mCameraOpenCloseLock.release();
-        }
-    }
 
     /**
      * 开始预览
@@ -339,4 +278,66 @@ public class CameraPreview {
 //			}
 //		});
     }
+
+
+    //region Setup and Teardown Methods
+
+    //--------------------------------
+    //Sets up a new background thread
+    // and it's Handler.
+    //--------------------------------
+    public void setupBackgroundThread()
+    {
+
+        mBackgroundThread = new HandlerThread("BackgroundCameraThread");
+        mBackgroundThread.start();
+        mBackgroundHandler = new Handler(mBackgroundThread.getLooper());
+    }
+
+
+    //---------------------------------------
+    // Stops the background thread and handler.
+    //-----------------------------------------
+    public void teardownBackgroundThread() {
+
+        mBackgroundThread.quitSafely();
+        try {
+            mBackgroundThread.join();
+            mBackgroundThread = null;
+            mBackgroundHandler = null;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    //-------------------------------------------------------
+    //Tears down and closes the camera device and session.
+    //------------------------------------------------------
+    public void teardownCamera() {
+
+        try {
+            // Prevent the teardown from occuring at the same time as setup.
+            mCameraOpenCloseLock.acquire();
+
+            if (mCaptureSession != null) {
+                mCaptureSession.close();
+                mCaptureSession = null;
+            }
+            if (mCameraDevice != null) {
+                mCameraDevice.close();
+                mCameraDevice = null;
+            }
+            if (mImageReader != null) {
+                mImageReader.close();
+                mImageReader = null;
+            }
+
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            mCameraOpenCloseLock.release();
+        }
+    }
+
 }

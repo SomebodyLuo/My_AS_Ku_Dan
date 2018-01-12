@@ -39,6 +39,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Message;
 import android.provider.MediaStore;
 import android.renderscript.Allocation;
 import android.renderscript.Element;
@@ -76,6 +77,7 @@ import com.threed.jpct.TextureManager;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
@@ -96,12 +98,15 @@ import io.orbi.ar.interfaces.OnOrbiCompleteListener;
 import io.orbi.ar.orientationProvider.ImprovedOrientationSensor2Provider;
 import io.orbi.ar.render.RendererJPCT;
 import io.orbi.ar.utils.BasicTimer;
+import io.orbi.ar.fragments.InitAPI;
 
 import static android.app.Activity.RESULT_OK;
 import static android.content.ContentValues.TAG;
 import static android.content.Context.MODE_PRIVATE;
 import static android.hardware.camera2.CameraMetadata.LENS_FACING_BACK;
 import static android.opengl.GLSurfaceView.RENDERMODE_WHEN_DIRTY;
+
+
 
 
 public class CameraFragment extends Fragment
@@ -111,8 +116,6 @@ public class CameraFragment extends Fragment
     public OnOrbiCompleteListener mListener;//call back to main activity
     public OnModelChangeListener modListener;//when model asset needs changing
 
-
-
     private final float[] mRotationQuaternion = new float[4];
     public RendererJPCT render;
 
@@ -120,14 +123,12 @@ public class CameraFragment extends Fragment
     RectF mDstRect = new RectF();
     Matrix mCanvasTransform = new Matrix();
 
-    TrackerState mTrackerState = TrackerState.IMAGE_DETECTION;
-
     private GLSurfaceView glSurfaceView;
 
+    private CameraPreview mCameraPreview;
+    private Size mCameraPreviewSize = new Size(1280, 720);//1920, 1080    //(1280, 720);
 
-    private Size mCameraPreviewSize = new Size(1280, 720);//1920, 1080
-    //(1280, 720);
-
+    private SensorWork sensorWork;
 
     private CameraSurfaceView mSurfaceView;
 
@@ -135,180 +136,13 @@ public class CameraFragment extends Fragment
 
     private ArrayList<Point> trackedCorners = new ArrayList<>(4);
 
-
+    enum TrackerState {
+        IMAGE_DETECTION,
+        IMAGE_TRACKING,
+        ARBITRACK
+    }
     private TrackerState state;
-
-    //luoyouren
-
-    private SurfaceHolder.Callback mSurfaceCallback = new SurfaceHolder.Callback()
-    {
-
-        @Override
-        public void surfaceCreated(SurfaceHolder holder)
-        {
-
-            // Prevent camera device setup if a background thread is not available.
-            if (mBackgroundHandler == null) {
-                return;
-            }
-
-            // Setup the camera only when the Surface has been created to ensure a valid output
-            // surface exists when the CameraCaptureSession is created.
-            setupCameraDevice();
-        }
-
-        @Override
-        public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-        }
-
-        @Override
-        public void surfaceDestroyed(SurfaceHolder holder) {
-        }
-    };
-
-    // luoyouren: 重要！
-    private ImageReader.OnImageAvailableListener mImageAvailListener = new ImageReader.OnImageAvailableListener() {
-
-
-        Bitmap cameraFrame = Bitmap.createBitmap(mCameraPreviewSize.getWidth(), mCameraPreviewSize.getHeight(), Bitmap.Config.ALPHA_8);
-        Rect cameraFrameRect = new Rect();
-        byte[] cameraFrameData = new byte[mCameraPreviewSize.getWidth() * mCameraPreviewSize.getHeight()];
-
-        int[] argb8888 = new int[mCameraPreviewSize.getWidth() * mCameraPreviewSize.getHeight()];
-        Bitmap colourFrame = Bitmap.createBitmap(mCameraPreviewSize.getWidth(), mCameraPreviewSize.getHeight(), Bitmap.Config.ARGB_8888);
-
-        @Override
-        public void onImageAvailable(ImageReader reader) {
-
-            // Synchronize with the tracker state to prevent changes to state mid-processing.
-            if(reader != null)
-            {
-
-                synchronized (mTrackerState)
-                {
-
-                    Image currentCameraImage = reader.acquireLatestImage();
-
-                    // Return if no new camera image is available.
-                    if (currentCameraImage == null) {
-                        return;
-                    }
-
-                    int width = currentCameraImage.getWidth();
-                    int height = currentCameraImage.getHeight();
-
-                    // luoyouren: just Y channel
-                    // Get the buffer holding the luma data from the YUV-format image.
-                    ByteBuffer buffer = currentCameraImage.getPlanes()[0].getBuffer();
-
-                    // Push the luma data into a byte array.
-                    buffer.get(cameraFrameData);
-
-                    // Update the cameraFrame bitmap with the new image data.
-                    buffer.rewind();
-                    cameraFrame.copyPixelsFromBuffer(buffer);
-
-                    // Process tracking based on the new camera frame data.
-                    mTrackerState = processTracking(cameraFrameData, width, height, mTrackerState, trackedCorners);
-                    // Render the new frame and tracking results to screen.
-                    //------------------------------------------------------------------------------
-                    //oli for PFL addition
-
-                    buffer.rewind();
-
-                    //first step get the YUV-format data
-                    Image.Plane Y = currentCameraImage.getPlanes()[0];
-                    Image.Plane U = currentCameraImage.getPlanes()[1];
-                    Image.Plane V = currentCameraImage.getPlanes()[2];
-
-                    int Yb = Y.getBuffer().remaining();
-                    int Ub = U.getBuffer().remaining();
-                    int Vb = V.getBuffer().remaining();
-
-                    byte[] data = new byte[Yb + Ub + Vb + 2];
-
-                    Y.getBuffer().get(data, 0, Yb);
-                    U.getBuffer().get(data, Yb + 1, Ub);
-                    V.getBuffer().get(data, Yb + Ub + 2, Vb);
-
-                    //  now we can convert data to rgb
-
-                    //data should store all the info we need
-
-
-                    //we can do the next stage in two ways
-                    //method one
-                    // working but a bit slow?
-            /*    if (rs==null) rs = RenderScript.create(getContext());
-                Allocation alloc = renderScriptNV21ToRGBA888(rs,width,height,data);
-                alloc.copyTo(colourFrame);
-          */
-
-                    //method 2
-                    decodeYUV(argb8888, data, width, height);
-                    colourFrame.setPixels(argb8888, 0, width, 0, 0, width, height);
-
-                    //----------------------------------
-                    //Render Camera Frame to Screen
-                    //----------------------------------
-                    renderFrameToScreen(colourFrame, cameraFrameRect, mTrackerState, trackedCorners);
-
-                    //------------------------------------------------------------------------------
-                    //end oli for PFL addition
-                    // Clean up frame data.
-                    buffer.clear();
-                    currentCameraImage.close();
-                }
-            }
-        }
-    };
-
-
-
-    private final CameraDevice.StateCallback mStateCallback = new CameraDevice.StateCallback() {
-
-        @Override
-        public void onOpened(@NonNull CameraDevice cameraDevice) {
-
-            Log.i("CameraDevice", "CameraDevice Opened.");
-
-            mCameraDevice = cameraDevice;
-
-
-
-            //-------------------------------------------------------
-            // Add the image trackable to the native image tracker.
-            //-------------------------------------------------------
-//            addTrackable(R.mipmap.ani1, "ANI1");
-//            addTrackable(R.mipmap.ani2, "ANI2");
-//            addTrackable(R.mipmap.kien, "Kien");
-            addTrackable(R.mipmap.sample, "sample");
-//            addTrackable(R.mipmap.desktop, "desktop");
-//            addTrackable(R.mipmap.roof, "roof");
-            addTrackable(R.mipmap.roof2, "roof2");
-            addTrackable(R.mipmap.roof3, "roof3");
-            addTrackable(R.mipmap.roof4, "roof4");
-            //-------
-
-
-            // Create the camera preview.
-            createCameraPreviewSession();
-        }
-
-        @Override
-        public void onDisconnected(@NonNull CameraDevice cameraDevice) {
-
-
-        }
-
-        @Override
-        public void onError(@NonNull CameraDevice cameraDevice, int error) {
-
-
-        }
-    };
-
-    private RenderScript rs = null;
+    private TrackerState mTrackerState = TrackerState.IMAGE_DETECTION;
 
     //------
     //UI and States
@@ -328,7 +162,7 @@ public class CameraFragment extends Fragment
     //---------------------
     private double lat = 0;
     private double lng = 0;
-    private EnviroDetection enviro = null;
+    public EnviroDetection enviro = null;
     private LocationDetection appLocationManager = null;
     private double fixedAzimuth = 0;
     private double fixedZenith = 90;
@@ -460,74 +294,74 @@ public class CameraFragment extends Fragment
         //Buttons
         //-------------
         target_bttn = (ImageView) view.findViewById(R.id.target_bttn);
-        target_bttn.setOnTouchListener(new View.OnTouchListener()
-        {
-            public boolean onTouch(View v, MotionEvent event)
-            {
-                if(event.getAction() == MotionEvent.ACTION_UP)
-                {
-                    if(render != null)
-                    {
-                        render.stick2screen(-600, -600);//default it off screen in between states
-                        glSurfaceView.requestRender();//跳真
-                        lss_switch.setChecked(false);//turn off manual light as need touch move events for model.
-                    }
-
-                }
-                if(event.getAction() == MotionEvent.ACTION_DOWN)
-                {
-
-                        // Synchronize with the tracker state to prevent changes to state mid-processing.
-                        synchronized (mTrackerState)
-                        {
-
-                            if (mTrackerState == TrackerState.IMAGE_DETECTION)
-                            {
-
-                                startArbiTracker(false);
-
-                                mTrackerState = TrackerState.ARBITRACK;
-                                target_bttn.setImageResource(R.drawable.camera_icon);
-
-
-
-                            }
-                            else if (mTrackerState == TrackerState.IMAGE_TRACKING)
-                            {
-
-                                startArbiTracker(true);
-
-                                mTrackerState = TrackerState.ARBITRACK;
-                                target_bttn.setImageResource(R.drawable.camera_icon);
-
-
-                                if (render != null)
-                                {
-                                    int xp = v.getWidth() / 2;
-                                    int yp = v.getHeight() / 2;
-                                    //render.updatePosition(new Point(xp, yp), (float) enviro.getAzimuth(), (float) enviro.getZenithAngle(), 5f, mCameraPreviewSize.getWidth(), mCameraPreviewSize.getHeight());
-                                }
-
-
-                            }
-                            else if (mTrackerState == TrackerState.ARBITRACK)
-                            {
-
-                                stopArbiTracker();
-
-                                mTrackerState = TrackerState.IMAGE_DETECTION;
-                                target_bttn.setImageResource(R.drawable.target);
-
-
-
-                            }
-                        }
-
-                }
-
-                return false;
-            }
-        });
+//        target_bttn.setOnTouchListener(new View.OnTouchListener()
+//        {
+//            public boolean onTouch(View v, MotionEvent event)
+//            {
+//                if(event.getAction() == MotionEvent.ACTION_UP)
+//                {
+//                    if(render != null)
+//                    {
+//                        render.stick2screen(-600, -600);//default it off screen in between states
+//                        glSurfaceView.requestRender();//跳真
+//                        lss_switch.setChecked(false);//turn off manual light as need touch move events for model.
+//                    }
+//
+//                }
+//                if(event.getAction() == MotionEvent.ACTION_DOWN)
+//                {
+//
+//                        // Synchronize with the tracker state to prevent changes to state mid-processing.
+//                        synchronized (mTrackerState)
+//                        {
+//
+//                            if (mTrackerState == TrackerState.IMAGE_DETECTION)
+//                            {
+//
+//                                startArbiTracker(false);
+//
+//                                mTrackerState = TrackerState.ARBITRACK;
+//                                target_bttn.setImageResource(R.drawable.camera_icon);
+//
+//
+//
+//                            }
+//                            else if (mTrackerState == TrackerState.IMAGE_TRACKING)
+//                            {
+//
+//                                startArbiTracker(true);
+//
+//                                mTrackerState = TrackerState.ARBITRACK;
+//                                target_bttn.setImageResource(R.drawable.camera_icon);
+//
+//
+//                                if (render != null)
+//                                {
+//                                    int xp = v.getWidth() / 2;
+//                                    int yp = v.getHeight() / 2;
+//                                    //render.updatePosition(new Point(xp, yp), (float) enviro.getAzimuth(), (float) enviro.getZenithAngle(), 5f, mCameraPreviewSize.getWidth(), mCameraPreviewSize.getHeight());
+//                                }
+//
+//
+//                            }
+//                            else if (mTrackerState == TrackerState.ARBITRACK)
+//                            {
+//
+//                                stopArbiTracker();
+//
+//                                mTrackerState = TrackerState.IMAGE_DETECTION;
+//                                target_bttn.setImageResource(R.drawable.target);
+//
+//
+//
+//                            }
+//                        }
+//
+//                }
+//
+//                return false;
+//            }
+//        });
 
 
         //----------------
@@ -687,8 +521,38 @@ public class CameraFragment extends Fragment
             }
         });
 
+        // 初始化摄像头
+        mCameraPreview = new CameraPreview(getContext(), mCameraPreviewSize);
+
+        // 初始化传感器
+        sensorWork = new SensorWork(getContext());
+
+
+        // 初始化 OpenGL/JPCT 相关
         setScene(view);
+
+
+        // 初始化Tracker
+        InitAPI initAPI = new InitAPI(getContext(), mCameraPreviewSize);
+        initAPI.Initialise();
+
+
+        //-------------------------------------------------------
+        // Add the image trackable to the native image tracker.
+        //-------------------------------------------------------
+//            addTrackable(R.mipmap.ani1, "ANI1");
+//            addTrackable(R.mipmap.ani2, "ANI2");
+//            addTrackable(R.mipmap.kien, "Kien");
+        addTrackable(R.mipmap.sample, "sample");
+//            addTrackable(R.mipmap.desktop, "desktop");
+//            addTrackable(R.mipmap.roof, "roof");
+        addTrackable(R.mipmap.roof2, "roof2");
+        addTrackable(R.mipmap.roof3, "roof3");
+        addTrackable(R.mipmap.roof4, "roof4");
+        //-------------------------------------------------------
     }
+
+
     private class ScaleListener extends ScaleGestureDetector.SimpleOnScaleGestureListener
     {
         @Override
@@ -815,6 +679,14 @@ public class CameraFragment extends Fragment
 
         enviro = new EnviroDetection(lat,lng);
 
+        if (enviro != null)
+        {
+            int gazi = (int) Math.round(enviro.getAzimuth());
+            int zazi = (int) Math.round(enviro.getZenithAngle());
+
+            output.setText("AZI: " + gazi + " | ZEN: " + zazi + " | " + LocationDetection.loci);
+        }
+
 
     }
 
@@ -822,9 +694,9 @@ public class CameraFragment extends Fragment
     public void onPause()
     {
 
-        teardownCamera();
-        teardownBackgroundThread();
-        teardownRotationSensor();
+        mCameraPreview.teardownCamera();
+        mCameraPreview.teardownBackgroundThread();
+        sensorWork.teardownRotationSensor();
 
         super.onPause();
     }
@@ -835,25 +707,57 @@ public class CameraFragment extends Fragment
 
         super.onResume();
 
-        setupBackgroundThread();
-        setupRotationSensor();
+        mCameraPreview.setupBackgroundThread();
 
         if (mSurfaceView.getHolder().getSurface().isValid())
         {
-            setupCameraDevice();
+            mCameraPreview.initCamera2();
         }
         else
         {
             mSurfaceView.getHolder().addCallback(mSurfaceCallback);
         }
+
+        sensorWork.setupRotationSensor(render);
     }
 
+    private static final int FRAMERATE = 10;
+    private static final int DOWNLOAD_FAILED = 1;
+
+    private final MyHandler mHandler = new MyHandler(this);
+
+    private static class MyHandler extends Handler{
+
+        //对Activity的弱引用
+        private final WeakReference<CameraFragment> fragmentWeakReference;
+
+        public MyHandler(CameraFragment fragment){
+            fragmentWeakReference = new WeakReference<CameraFragment>(fragment);
+        }
+
+        @Override
+        public void handleMessage(Message msg) {
+            final CameraFragment fragment = fragmentWeakReference.get();
+            if(fragment == null){
+                super.handleMessage(msg);
+                return;
+            }
+            switch (msg.what) {
+                case DOWNLOAD_FAILED:
 
 
-    //endregion
+                    break;
+                case FRAMERATE:
 
-
-
+                    fragment.info.setText((String)msg.obj);
+                    fragment.info.setTextColor(Color.RED);
+                    break;
+                default:
+                    super.handleMessage(msg);
+                    break;
+            }
+        }
+    }
 
 
 
@@ -870,7 +774,7 @@ public class CameraFragment extends Fragment
         {
             oldSize=0;
             // Native call to the image tracking and detection object.
-            trackedData = processImageTrackerFrame(data, width, height, 1, 0, false);
+            trackedData = NativeTracker.processImageTrackerFrame(data, width, height, 1, 0, false);
 
             if (trackedData != null)
             {
@@ -1107,7 +1011,15 @@ public class CameraFragment extends Fragment
         });
 
         // luoyouren: 显示帧率
-        updateFrameRates();
+        // Update Android GUI.
+        getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+
+                info.setText(FrameRate.updateFrameRates());
+                info.setTextColor(Color.RED);
+            }
+        });
         //---------------------
 
         mSrcRect.set(0, 0, mCameraPreviewSize.getWidth(), mCameraPreviewSize.getHeight());
@@ -1144,11 +1056,6 @@ public class CameraFragment extends Fragment
         mSurfaceView.getHolder().getSurface().unlockCanvasAndPost(canvas);
     }
 
-
-
-
-
-
     //----------------------------
     //Add Trackable Resource
     //----------------------------
@@ -1162,6 +1069,125 @@ public class CameraFragment extends Fragment
             throw new RuntimeException("Trackable could not be added to image tracker.");
         }
     }
+
+
+    private SurfaceHolder.Callback mSurfaceCallback = new SurfaceHolder.Callback()
+    {
+
+        @Override
+        public void surfaceCreated(SurfaceHolder holder)
+        {
+
+            // Setup the camera only when the Surface has been created to ensure a valid output
+            // surface exists when the CameraCaptureSession is created.
+            mCameraPreview.initCamera2();
+        }
+
+        @Override
+        public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+        }
+
+        @Override
+        public void surfaceDestroyed(SurfaceHolder holder) {
+        }
+    };
+
+    // luoyouren: 重要！
+    private ImageReader.OnImageAvailableListener mImageAvailListener = new ImageReader.OnImageAvailableListener() {
+
+
+        Bitmap cameraFrame = Bitmap.createBitmap(mCameraPreviewSize.getWidth(), mCameraPreviewSize.getHeight(), Bitmap.Config.ALPHA_8);
+        Rect cameraFrameRect = new Rect();
+        byte[] cameraFrameData = new byte[mCameraPreviewSize.getWidth() * mCameraPreviewSize.getHeight()];
+
+        int[] argb8888 = new int[mCameraPreviewSize.getWidth() * mCameraPreviewSize.getHeight()];
+        Bitmap colourFrame = Bitmap.createBitmap(mCameraPreviewSize.getWidth(), mCameraPreviewSize.getHeight(), Bitmap.Config.ARGB_8888);
+
+        @Override
+        public void onImageAvailable(ImageReader reader) {
+
+            // Synchronize with the tracker state to prevent changes to state mid-processing.
+            if(reader != null)
+            {
+
+                synchronized (mTrackerState)
+                {
+
+                    Image currentCameraImage = reader.acquireLatestImage();
+
+                    // Return if no new camera image is available.
+                    if (currentCameraImage == null) {
+                        return;
+                    }
+
+                    int width = currentCameraImage.getWidth();
+                    int height = currentCameraImage.getHeight();
+
+                    // luoyouren: just Y channel
+                    // Get the buffer holding the luma data from the YUV-format image.
+                    ByteBuffer buffer = currentCameraImage.getPlanes()[0].getBuffer();
+
+                    // Push the luma data into a byte array.
+                    buffer.get(cameraFrameData);
+
+                    // Update the cameraFrame bitmap with the new image data.
+                    buffer.rewind();
+                    cameraFrame.copyPixelsFromBuffer(buffer);
+
+                    // Process tracking based on the new camera frame data.
+                    mTrackerState = processTracking(cameraFrameData, width, height, mTrackerState, trackedCorners);
+                    // Render the new frame and tracking results to screen.
+                    //------------------------------------------------------------------------------
+                    //oli for PFL addition
+
+                    buffer.rewind();
+
+                    //first step get the YUV-format data
+                    Image.Plane Y = currentCameraImage.getPlanes()[0];
+                    Image.Plane U = currentCameraImage.getPlanes()[1];
+                    Image.Plane V = currentCameraImage.getPlanes()[2];
+
+                    int Yb = Y.getBuffer().remaining();
+                    int Ub = U.getBuffer().remaining();
+                    int Vb = V.getBuffer().remaining();
+
+                    byte[] data = new byte[Yb + Ub + Vb + 2];
+
+                    Y.getBuffer().get(data, 0, Yb);
+                    U.getBuffer().get(data, Yb + 1, Ub);
+                    V.getBuffer().get(data, Yb + Ub + 2, Vb);
+
+                    //  now we can convert data to rgb
+
+                    //data should store all the info we need
+
+
+                    //we can do the next stage in two ways
+                    //method one
+                    // working but a bit slow?
+            /*    if (rs==null) rs = RenderScript.create(getContext());
+                Allocation alloc = renderScriptNV21ToRGBA888(rs,width,height,data);
+                alloc.copyTo(colourFrame);
+          */
+
+                    //method 2
+                    decodeYUV(argb8888, data, width, height);
+                    colourFrame.setPixels(argb8888, 0, width, 0, 0, width, height);
+
+                    //----------------------------------
+                    //Render Camera Frame to Screen
+                    //----------------------------------
+                    renderFrameToScreen(colourFrame, cameraFrameRect, mTrackerState, trackedCorners);
+
+                    //------------------------------------------------------------------------------
+                    //end oli for PFL addition
+                    // Clean up frame data.
+                    buffer.clear();
+                    currentCameraImage.close();
+                }
+            }
+        }
+    };
 
 
 

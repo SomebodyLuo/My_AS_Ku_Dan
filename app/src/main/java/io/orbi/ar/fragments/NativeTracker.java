@@ -41,9 +41,5 @@ public class NativeTracker {
             int padding,
             boolean requiresFlip);
 
-    enum TrackerState {
-        IMAGE_DETECTION,
-        IMAGE_TRACKING,
-        ARBITRACK
-    }
+
 }

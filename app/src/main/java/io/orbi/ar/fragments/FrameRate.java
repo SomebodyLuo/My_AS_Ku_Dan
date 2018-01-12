@@ -10,28 +10,28 @@ import android.util.Log;
 public class FrameRate {
 
 
-    private float	mRealTimeFrame; //实时帧率
-    private float	mAverageFrame; //平均帧率
-    private float	mAllFrame;
-    private int		mFrameCount;
-    private long	mLastTime = 0;
-    String framerates;
+    private static float	mRealTimeFrame; //实时帧率
+    private static float	mAverageFrame; //平均帧率
+    private static float	mAllFrame;
+    private static int		mFrameCount;
+    private static long	mLastTime = 0;
+    private static String framerates;
 
-    private void updateFrameRates()
+    public static String updateFrameRates()
     {
 
         long time = System.currentTimeMillis();
         if(mLastTime == 0){
 
-            this.mRealTimeFrame = 0;
-            this.mAverageFrame = 0;
+            mRealTimeFrame = 0;
+            mAverageFrame = 0;
 
         }else{
 
-            this.mRealTimeFrame = 1000f /(time - mLastTime);
-            this.mAllFrame += mRealTimeFrame;
-            this.mFrameCount ++;
-            this.mAverageFrame = mAllFrame/mFrameCount;
+            mRealTimeFrame = 1000f /(time - mLastTime);
+            mAllFrame += mRealTimeFrame;
+            mFrameCount ++;
+            mAverageFrame = mAllFrame/mFrameCount;
             if(mFrameCount > 400 ){
                 mFrameCount = 0;
                 mAllFrame = 0;
@@ -48,14 +48,6 @@ public class FrameRate {
         framerates = "" + (int)(mRealTimeFrame*100)/100f;
         Log.d("frame","frame = " + framerates);
 
-        // Update Android GUI.
-        getActivity().runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-
-                info.setText(framerates);
-                info.setTextColor(Color.RED);
-            }
-        });
+        return framerates;
     }
 }
