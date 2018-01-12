@@ -27,7 +27,7 @@ public class ObjLoader {
     private Resources mRes = null;
     private Activity mActivity = null;
 
-    private void ObjLoader(Resources res, Activity activity)
+    public ObjLoader(Resources res, Activity activity)
     {
         mRes = res;
         mActivity = activity;
@@ -285,7 +285,7 @@ public class ObjLoader {
 
     }
 
-    protected Object3D loadHouse()
+    public Object3D loadHouse()
     {
         Object3D renderObj = null;
         AssetManager mgr = mActivity.getAssets();

@@ -586,6 +586,7 @@ public class CameraFragment extends Fragment
         }
     }
 
+    private ObjLoader objLoader = new ObjLoader(getResources(), getActivity());
     //----------------------------------
     //Init render and gl
     //----------------------------------
@@ -618,7 +619,7 @@ public class CameraFragment extends Fragment
         {
             Log.i("@@INDEX",":Plant");
             sendToast("Plant Loaded");
-            render.init(loadHouse());
+            render.init(objLoader.loadHouse());
             render.setLightColor(light1, 255, 255, 255);
             render.setSunLum(210);//set ambient init light
         }
@@ -626,7 +627,7 @@ public class CameraFragment extends Fragment
         {
             Log.i("@@INDEX",":Ball");
             sendToast("Ball Loaded");
-            render.init(loadPlant01());
+            render.init(objLoader.loadPlant01());
             render.setLightColor(light1, 60, 60, 60);
             render.setSunLum(180);//set ambient init light
         }
@@ -711,6 +712,7 @@ public class CameraFragment extends Fragment
 
         if (mSurfaceView.getHolder().getSurface().isValid())
         {
+            mCameraPreview.setImageAvailListener(mImageAvailListener);
             mCameraPreview.initCamera2();
         }
         else
@@ -1080,6 +1082,7 @@ public class CameraFragment extends Fragment
 
             // Setup the camera only when the Surface has been created to ensure a valid output
             // surface exists when the CameraCaptureSession is created.
+            mCameraPreview.setImageAvailListener(mImageAvailListener);
             mCameraPreview.initCamera2();
         }
 
