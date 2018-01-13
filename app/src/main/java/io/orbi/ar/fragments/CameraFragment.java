@@ -1,55 +1,28 @@
 package io.orbi.ar.fragments;
 
-import android.Manifest;
-import android.app.Activity;
 import android.app.Fragment;
-import android.content.ContentResolver;
 import android.content.Context;
-import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.ApplicationInfo;
-import android.content.pm.PackageManager;
-import android.content.res.AssetManager;
-import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.ImageFormat;
 import android.graphics.Matrix;
 import android.graphics.PixelFormat;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.RectF;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
-import android.hardware.camera2.CameraAccessException;
-import android.hardware.camera2.CameraCaptureSession;
-import android.hardware.camera2.CameraCharacteristics;
-import android.hardware.camera2.CameraDevice;
-import android.hardware.camera2.CameraManager;
-import android.hardware.camera2.CaptureRequest;
 import android.media.Image;
 import android.media.ImageReader;
-import android.net.Uri;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
-import android.os.HandlerThread;
 import android.os.Message;
-import android.provider.MediaStore;
 import android.renderscript.Allocation;
 import android.renderscript.Element;
 import android.renderscript.RenderScript;
 import android.renderscript.ScriptIntrinsicYuvToRGB;
 import android.renderscript.Type;
-import android.support.annotation.NonNull;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.FileProvider;
-import android.text.TextUtils;
 import android.util.Log;
 import android.util.Size;
 import android.view.LayoutInflater;
@@ -58,34 +31,15 @@ import android.view.ScaleGestureDetector;
 import android.view.SurfaceHolder;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.CompoundButton;
 import android.widget.ImageView;
-import android.widget.Spinner;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.threed.jpct.Loader;
-import com.threed.jpct.Object3D;
-import com.threed.jpct.Primitives;
-import com.threed.jpct.RGBColor;
-import com.threed.jpct.SimpleVector;
-import com.threed.jpct.Texture;
-import com.threed.jpct.TextureManager;
-
-import java.io.File;
-import java.io.IOException;
 import java.lang.ref.WeakReference;
-import java.net.URI;
 import java.nio.ByteBuffer;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
 
 
 import io.orbi.ar.CameraSurfaceView;
@@ -95,15 +49,10 @@ import io.orbi.ar.detection.EnviroDetection;
 import io.orbi.ar.detection.LocationDetection;
 import io.orbi.ar.interfaces.OnModelChangeListener;
 import io.orbi.ar.interfaces.OnOrbiCompleteListener;
-import io.orbi.ar.orientationProvider.ImprovedOrientationSensor2Provider;
 import io.orbi.ar.render.RendererJPCT;
 import io.orbi.ar.utils.BasicTimer;
-import io.orbi.ar.fragments.InitAPI;
 
-import static android.app.Activity.RESULT_OK;
-import static android.content.ContentValues.TAG;
 import static android.content.Context.MODE_PRIVATE;
-import static android.hardware.camera2.CameraMetadata.LENS_FACING_BACK;
 import static android.opengl.GLSurfaceView.RENDERMODE_WHEN_DIRTY;
 
 
@@ -126,7 +75,10 @@ public class CameraFragment extends Fragment
     private GLSurfaceView glSurfaceView;
 
     private CameraPreview mCameraPreview;
-    private Size mCameraPreviewSize = new Size(1280, 720);//1920, 1080    //(1280, 720);
+    private VideoPreview mVideoPreview;
+
+    private Size mViewSize = new Size(1280, 720);//1920, 1080    //(1280, 720);
+    private Size mPreviewSize = null;
 
     private SensorWork sensorWork;
 
@@ -259,7 +211,7 @@ public class CameraFragment extends Fragment
     {
         //camera
         mSurfaceView = (CameraSurfaceView) view.findViewById(R.id.surface_view);
-        mSurfaceView.setAspectRatio(mCameraPreviewSize.getWidth(), mCameraPreviewSize.getHeight());
+        mSurfaceView.setAspectRatio(mViewSize.getWidth(), mViewSize.getHeight());
 
         mStatusLabel = (TextView) view.findViewById(R.id.status_label);
         mStatusLabel.setText("Setting Up.");
@@ -522,7 +474,11 @@ public class CameraFragment extends Fragment
         });
 
         // 初始化摄像头
-        mCameraPreview = new CameraPreview(getContext(), mCameraPreviewSize);
+//        mCameraPreview = new CameraPreview(getContext(), mPreviewSize);
+
+        // 初始化视频文件
+        mVideoPreview = new VideoPreview(getContext());
+
 
         // 初始化传感器
         sensorWork = new SensorWork(getContext());
@@ -532,25 +488,34 @@ public class CameraFragment extends Fragment
         setScene(view);
 
 
-        // 初始化Tracker
-        InitAPI initAPI = new InitAPI(getContext(), mCameraPreviewSize);
-        initAPI.Initialise();
+
+    }
+
+    public VideoPrepareListener videoPrepareListener = new VideoPrepareListener() {
+        @Override
+        public void onVideoPrepare(Size size) {
+            mPreviewSize = size;
+
+            // 初始化Tracker
+            InitAPI initAPI = new InitAPI(getContext(), mPreviewSize);
+            initAPI.Initialise();
 
 
-        //-------------------------------------------------------
-        // Add the image trackable to the native image tracker.
-        //-------------------------------------------------------
+            //-------------------------------------------------------
+            // Add the image trackable to the native image tracker.
+            //-------------------------------------------------------
 //            addTrackable(R.mipmap.ani1, "ANI1");
 //            addTrackable(R.mipmap.ani2, "ANI2");
 //            addTrackable(R.mipmap.kien, "Kien");
-        addTrackable(R.mipmap.sample, "sample");
+            addTrackable(R.mipmap.sample, "sample");
 //            addTrackable(R.mipmap.desktop, "desktop");
 //            addTrackable(R.mipmap.roof, "roof");
-        addTrackable(R.mipmap.roof2, "roof2");
-        addTrackable(R.mipmap.roof3, "roof3");
-        addTrackable(R.mipmap.roof4, "roof4");
-        //-------------------------------------------------------
-    }
+            addTrackable(R.mipmap.roof2, "roof2");
+            addTrackable(R.mipmap.roof3, "roof3");
+            addTrackable(R.mipmap.roof4, "roof4");
+            //-------------------------------------------------------
+        }
+    };
 
 
     private class ScaleListener extends ScaleGestureDetector.SimpleOnScaleGestureListener
@@ -697,8 +662,11 @@ public class CameraFragment extends Fragment
     public void onPause()
     {
 
-        mCameraPreview.teardownCamera();
-        mCameraPreview.teardownBackgroundThread();
+//        mCameraPreview.teardownCamera();
+//        mCameraPreview.teardownBackgroundThread();
+
+        mVideoPreview.teardownBackgroundThread();
+
         sensorWork.teardownRotationSensor();
 
         super.onPause();
@@ -710,12 +678,15 @@ public class CameraFragment extends Fragment
 
         super.onResume();
 
-        mCameraPreview.setupBackgroundThread();
+//        mCameraPreview.setupBackgroundThread();
+        mVideoPreview.setupBackgroundThread();
 
         if (mSurfaceView.getHolder().getSurface().isValid())
         {
-            mCameraPreview.setImageAvailListener(mImageAvailListener);
-            mCameraPreview.initCamera2();
+//            mCameraPreview.setImageAvailListener(mImageAvailListener);
+//            mCameraPreview.initCamera2();
+
+            mVideoPreview.InitMediaPlayer(mViewSize, mImageAvailListener, videoPrepareListener);
         }
         else
         {
@@ -1026,8 +997,8 @@ public class CameraFragment extends Fragment
         });
         //---------------------
 
-        mSrcRect.set(0, 0, mCameraPreviewSize.getWidth(), mCameraPreviewSize.getHeight());
-        mDstRect.set(0, 0, mSurfaceView.getWidth(), mSurfaceView.getHeight());
+        mSrcRect.set(0, 0, mPreviewSize.getWidth(), mPreviewSize.getHeight());
+        mDstRect.set(0, 0, mViewSize.getWidth(), mViewSize.getHeight());
         mCanvasTransform.setRectToRect(mSrcRect, mDstRect, Matrix.ScaleToFit.END);
 
         Canvas canvas = mSurfaceView.getHolder().getSurface().lockCanvas(mSurfaceView.getClipBounds());
@@ -1084,8 +1055,9 @@ public class CameraFragment extends Fragment
 
             // Setup the camera only when the Surface has been created to ensure a valid output
             // surface exists when the CameraCaptureSession is created.
-            mCameraPreview.setImageAvailListener(mImageAvailListener);
-            mCameraPreview.initCamera2();
+//            mCameraPreview.setImageAvailListener(mImageAvailListener);
+//            mCameraPreview.initCamera2();
+            mVideoPreview.InitMediaPlayer(mViewSize, mImageAvailListener, videoPrepareListener);
         }
 
         @Override
@@ -1101,15 +1073,32 @@ public class CameraFragment extends Fragment
     private ImageReader.OnImageAvailableListener mImageAvailListener = new ImageReader.OnImageAvailableListener() {
 
 
-        Bitmap cameraFrame = Bitmap.createBitmap(mCameraPreviewSize.getWidth(), mCameraPreviewSize.getHeight(), Bitmap.Config.ALPHA_8);
         Rect cameraFrameRect = new Rect();
-        byte[] cameraFrameData = new byte[mCameraPreviewSize.getWidth() * mCameraPreviewSize.getHeight()];
 
-        int[] argb8888 = new int[mCameraPreviewSize.getWidth() * mCameraPreviewSize.getHeight()];
-        Bitmap colourFrame = Bitmap.createBitmap(mCameraPreviewSize.getWidth(), mCameraPreviewSize.getHeight(), Bitmap.Config.ARGB_8888);
+        Bitmap cameraFrame = null;
+        byte[] cameraFrameData = null;
+
+        int[] argb8888 = null;
+        Bitmap colourFrame = null;
 
         @Override
         public void onImageAvailable(ImageReader reader) {
+
+            if (null == cameraFrame) {
+                cameraFrame = Bitmap.createBitmap(mPreviewSize.getWidth(), mPreviewSize.getHeight(), Bitmap.Config.ALPHA_8);
+            }
+
+            if (null == cameraFrameData) {
+                cameraFrameData = new byte[mPreviewSize.getWidth() * mPreviewSize.getHeight()];
+            }
+
+            if (null == argb8888) {
+                argb8888 = new int[mPreviewSize.getWidth() * mPreviewSize.getHeight()];
+            }
+
+            if (null == colourFrame) {
+                colourFrame = Bitmap.createBitmap(mPreviewSize.getWidth(), mPreviewSize.getHeight(), Bitmap.Config.ARGB_8888);
+            }
 
             // Synchronize with the tracker state to prevent changes to state mid-processing.
             if(reader != null)
@@ -1127,6 +1116,7 @@ public class CameraFragment extends Fragment
 
                     int width = currentCameraImage.getWidth();
                     int height = currentCameraImage.getHeight();
+                    Log.i(TAG, "image width = " + width + "; height = " + height);
 
                     // luoyouren: just Y channel
                     // Get the buffer holding the luma data from the YUV-format image.
