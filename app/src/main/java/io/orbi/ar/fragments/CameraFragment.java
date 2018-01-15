@@ -1007,7 +1007,7 @@ public class CameraFragment extends Fragment
         //---------------------
 
         mSrcRect.set(0, 0, mPreviewSize.getWidth(), mPreviewSize.getHeight());
-        mDstRect.set(0, 0, mViewSize.getWidth(), mViewSize.getHeight());
+        mDstRect.set(0, 0, mSurfaceView.getWidth(), mSurfaceView.getHeight());
         mCanvasTransform.setRectToRect(mSrcRect, mDstRect, Matrix.ScaleToFit.END);
 
         Canvas canvas = mSurfaceView.getHolder().getSurface().lockCanvas(mSurfaceView.getClipBounds());

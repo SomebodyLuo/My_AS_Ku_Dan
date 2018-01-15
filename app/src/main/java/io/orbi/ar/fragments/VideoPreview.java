@@ -67,7 +67,7 @@ public class VideoPreview implements MediaPlayer.OnCompletionListener,MediaPlaye
         //下面开始实例化MediaPlayer对象
         Log.i(TAG, "InitMediaPlayer called");
         //然后指定需要播放文件的路径，初始化MediaPlayer
-        String dataPath = Environment.getExternalStorageDirectory().getPath() + "/VID20180115210204.mp4";    //muliujia.mp4  ar_video.mp4  roof_video  VID20180114141330.mp4  VID20180115210204.mp4
+        String dataPath = Environment.getExternalStorageDirectory().getPath() + "/roof_video.mp4";    //muliujia.mp4  ar_video.mp4  roof_video  VID20180114141330.mp4  VID20180115210204.mp4
         Log.i(TAG, dataPath);
         try {
             player.setDataSource(dataPath);
