@@ -510,9 +510,18 @@ public class CameraFragment extends Fragment
             addTrackable(R.mipmap.sample, "sample");
 //            addTrackable(R.mipmap.desktop, "desktop");
 //            addTrackable(R.mipmap.roof, "roof");
-            addTrackable(R.mipmap.roof2, "roof2");
-            addTrackable(R.mipmap.roof3, "roof3");
-            addTrackable(R.mipmap.roof4, "roof4");
+//            addTrackable(R.mipmap.roof2, "roof2");
+//            addTrackable(R.mipmap.roof3, "roof3");
+//            addTrackable(R.mipmap.roof4, "roof4");
+
+            addTrackable(R.mipmap.roof10, "roof10");
+            addTrackable(R.mipmap.roof11, "roof11");
+            addTrackable(R.mipmap.roof12, "roof12");
+            addTrackable(R.mipmap.roof13, "roof13");
+            addTrackable(R.mipmap.roof14, "roof14");
+            addTrackable(R.mipmap.roof15, "roof15");
+            addTrackable(R.mipmap.roof16, "roof16");
+            addTrackable(R.mipmap.roof17, "roof17");
             //-------------------------------------------------------
         }
     };
@@ -1084,21 +1093,21 @@ public class CameraFragment extends Fragment
         @Override
         public void onImageAvailable(ImageReader reader) {
 
-            if (null == cameraFrame) {
-                cameraFrame = Bitmap.createBitmap(mPreviewSize.getWidth(), mPreviewSize.getHeight(), Bitmap.Config.ALPHA_8);
-            }
-
-            if (null == cameraFrameData) {
-                cameraFrameData = new byte[mPreviewSize.getWidth() * mPreviewSize.getHeight()];
-            }
-
-            if (null == argb8888) {
-                argb8888 = new int[mPreviewSize.getWidth() * mPreviewSize.getHeight()];
-            }
-
-            if (null == colourFrame) {
-                colourFrame = Bitmap.createBitmap(mPreviewSize.getWidth(), mPreviewSize.getHeight(), Bitmap.Config.ARGB_8888);
-            }
+//            if (null == cameraFrame) {
+//                cameraFrame = Bitmap.createBitmap(mPreviewSize.getWidth(), mPreviewSize.getHeight(), Bitmap.Config.ALPHA_8);
+//            }
+//
+//            if (null == cameraFrameData) {
+//                cameraFrameData = new byte[mPreviewSize.getWidth() * mPreviewSize.getHeight()];
+//            }
+//
+//            if (null == argb8888) {
+//                argb8888 = new int[mPreviewSize.getWidth() * mPreviewSize.getHeight()];
+//            }
+//
+//            if (null == colourFrame) {
+//                colourFrame = Bitmap.createBitmap(mPreviewSize.getWidth(), mPreviewSize.getHeight(), Bitmap.Config.ARGB_8888);
+//            }
 
             // Synchronize with the tracker state to prevent changes to state mid-processing.
             if(reader != null)
@@ -1114,59 +1123,61 @@ public class CameraFragment extends Fragment
                         return;
                     }
 
-                    int width = currentCameraImage.getWidth();
-                    int height = currentCameraImage.getHeight();
-                    Log.i(TAG, "image width = " + width + "; height = " + height);
+                    final Image.Plane[] planes = currentCameraImage.getPlanes();
+                    Log.i(TAG, "image format = " + currentCameraImage.getFormat());
+                    Log.i(TAG, "image.width = " + currentCameraImage.getWidth());
+                    Log.i(TAG, "image.height = " + currentCameraImage.getHeight());
+                    Log.i(TAG, "planes = " + planes.length);
 
-                    // luoyouren: just Y channel
-                    // Get the buffer holding the luma data from the YUV-format image.
-                    ByteBuffer buffer = currentCameraImage.getPlanes()[0].getBuffer();
+                    Log.i(TAG, "planes[0].getPixelStride = " + planes[0].getPixelStride());
+                    Log.i(TAG, "planes[0].getRowStride = " + planes[0].getRowStride());
 
-                    // Push the luma data into a byte array.
-                    buffer.get(cameraFrameData);
+                    Log.i(TAG, "planes[1].getPixelStride = " + planes[1].getPixelStride());
+                    Log.i(TAG, "planes[1].getRowStride = " + planes[1].getRowStride());
 
-                    // Update the cameraFrame bitmap with the new image data.
-                    buffer.rewind();
-                    cameraFrame.copyPixelsFromBuffer(buffer);
-
-                    // Process tracking based on the new camera frame data.
-                    mTrackerState = processTracking(cameraFrameData, width, height, mTrackerState, trackedCorners);
-                    // Render the new frame and tracking results to screen.
-                    //------------------------------------------------------------------------------
-                    //oli for PFL addition
-
-                    buffer.rewind();
+                    Log.i(TAG, "planes[2].getPixelStride = " + planes[2].getPixelStride());
+                    Log.i(TAG, "planes[2].getRowStride = " + planes[2].getRowStride());
 
                     //first step get the YUV-format data
-                    Image.Plane Y = currentCameraImage.getPlanes()[0];
-                    Image.Plane U = currentCameraImage.getPlanes()[1];
-                    Image.Plane V = currentCameraImage.getPlanes()[2];
+                    Image.Plane Y = planes[0];
+                    Image.Plane U = planes[1];
+                    Image.Plane V = planes[2];
 
                     int Yb = Y.getBuffer().remaining();
                     int Ub = U.getBuffer().remaining();
                     int Vb = V.getBuffer().remaining();
 
-                    byte[] data = new byte[Yb + Ub + Vb + 2];
+                    byte[] data = new byte[Yb * 2];
 
                     Y.getBuffer().get(data, 0, Yb);
                     U.getBuffer().get(data, Yb + 1, Ub);
-                    V.getBuffer().get(data, Yb + Ub + 2, Vb);
+                    V.getBuffer().get(data, Yb * 3 / 2 + 1, Vb);
 
-                    //  now we can convert data to rgb
+                    int width = planes[0].getRowStride();
+                    int height = (int)Math.ceil(Yb / width);    // 对一个数进行上取整。让最终的Bitmap能够全部存储下所有的YUV byte
+                    Log.i(TAG, "operating width = " + width + "; height = " + height);
+                    if (null == argb8888) {
+                        argb8888 = new int[width * height];
+                    }
 
-                    //data should store all the info we need
+                    if (null == colourFrame) {
+                        colourFrame = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+                    }
 
+                    int YDataSize = mPreviewSize.getWidth() * mPreviewSize.getHeight();
+                    if (null == cameraFrameData) {
+                        cameraFrameData = new byte[width * height];
+                    }
+                    Y.getBuffer().rewind();
+                    Y.getBuffer().get(cameraFrameData, 0, YDataSize);
 
-                    //we can do the next stage in two ways
-                    //method one
-                    // working but a bit slow?
-            /*    if (rs==null) rs = RenderScript.create(getContext());
-                Allocation alloc = renderScriptNV21ToRGBA888(rs,width,height,data);
-                alloc.copyTo(colourFrame);
-          */
+                    // Process tracking based on the new camera frame data.
+                    mTrackerState = processTracking(cameraFrameData, mPreviewSize.getWidth(), mPreviewSize.getHeight(), mTrackerState, trackedCorners);
+
 
                     //method 2
-                    decodeYUV(argb8888, data, width, height);
+                    decodeYUVSemiPlanar(argb8888, data, width, height);
+
                     colourFrame.setPixels(argb8888, 0, width, 0, 0, width, height);
 
                     //----------------------------------
@@ -1177,7 +1188,6 @@ public class CameraFragment extends Fragment
                     //------------------------------------------------------------------------------
                     //end oli for PFL addition
                     // Clean up frame data.
-                    buffer.clear();
                     currentCameraImage.close();
                 }
             }
@@ -1190,7 +1200,7 @@ public class CameraFragment extends Fragment
     //decode Y, U, and V values on the YUV 420 & Split RGBA
     //-------------------------------------
 
-    public void decodeYUV(int[] out, byte[] fg, int width, int height) throws NullPointerException, IllegalArgumentException {
+    public void decodeYUVSemiPlanar(int[] out, byte[] fg, int width, int height) throws NullPointerException, IllegalArgumentException {
         int sz = width * height;
         if (out == null) throw new NullPointerException("buffer out is null");
         if (out.length < sz)
