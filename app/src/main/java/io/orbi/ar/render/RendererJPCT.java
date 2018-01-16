@@ -1,6 +1,7 @@
 package io.orbi.ar.render;
 
 import com.threed.jpct.*;
+import com.threed.jpct.Matrix;
 import com.threed.jpct.util.*;
 
 import android.content.Context;
@@ -13,7 +14,7 @@ import android.graphics.Point;
 import android.opengl.GLSurfaceView;
 
 import io.orbi.ar.orientationProvider.OrientationProvider;
-import io.orbi.ar.representation.MatrixF4x4;
+import io.orbi.ar.representation.*;
 
 
 public class RendererJPCT implements GLSurfaceView.Renderer {
@@ -222,12 +223,45 @@ public class RendererJPCT implements GLSurfaceView.Renderer {
         EnvironmentJPCT.setSunPH(-(float) (c * MathJPCT.deg2rad), (float) ((180 - b) * MathJPCT.deg2rad));
     }
 
+    public void updateReference(Point a, float b, float c, float d, double e, double f, double angleX, double angleY, double angleZ) {
+        if ((screenMgr == null) || (orientProvider == null)) return;
+        float[] m, n = new float[3], v = ViewportJPCT.fovTan;
+        float s;
+        orientProvider.getRotationMatrix(mat4);
+        if (false) {
+            m = mat4.matrix;
+        } else
+        {
+            Matrix matrix = new Matrix();
+            matrix.rotateX((float) Math.toRadians(angleX));
+            matrix.rotateY((float) Math.toRadians(angleY));
+            matrix.rotateZ((float) Math.toRadians(angleZ));
+            m = matrix.getDump();
+//            m = new float[]{
+//                    1, 0, 0, 0,
+//                    0, 1, 0, 0,
+//                    0, 0, 1, 0,
+//                    0, 0, 0, 1};
+        }
+//		m=new float[]{0,0,-1,0,0,0,0,0,1,0,0};
+//		m=new float[]{0.707f,0,-0.707f,0,0,0,0,0,0.707f,0,0.707f};
+        ViewportJPCT.setVec6(-m[6], m[2], -m[10], m[4], -m[0], m[8]);
+        s = (float) (0.1 / (v[0] * d * (1 + userScale / 2) / e));
+        n[1] = (float) Math.atan((1 - 2f * a.x / e) * v[0]);
+        n[0] = (float) Math.atan((1 - 2f * a.y / f) * v[1]);
+        MathJPCT.phr2vec9_f(n, vec9tmp1);
+        MathJPCT.vec9add(vec9tmp1, ViewportJPCT.vec9, vec9tmp2);
+        MathJPCT.vec3mul1_fff(vec9tmp2, s, refPos);
+        EnvironmentJPCT.setSunPH(-(float) (c * MathJPCT.deg2rad), (float) ((180 - b) * MathJPCT.deg2rad));
+    }
+
     public void updateReference(Point a, float b, float c, float d, double e, double f) {
         if ((screenMgr == null) || (orientProvider == null)) return;
         float[] m, n = new float[3], v = ViewportJPCT.fovTan;
         float s;
         orientProvider.getRotationMatrix(mat4);
         m = mat4.matrix;
+
 //		m=new float[]{0,0,-1,0,0,0,0,0,1,0,0};
 //		m=new float[]{0.707f,0,-0.707f,0,0,0,0,0,0.707f,0,0.707f};
         ViewportJPCT.setVec6(-m[6], m[2], -m[10], m[4], -m[0], m[8]);

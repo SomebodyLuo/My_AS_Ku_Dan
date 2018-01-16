@@ -306,9 +306,9 @@ public class ObjLoader {
             renderObj.setName("house");
             renderObj.setTexture("house1");
             renderObj.setSpecularLighting(false);
+//            renderObj.rotateZ(3.14f / 3.0f);
             renderObj.setOrigin(new SimpleVector(0, 0, 0));
-            renderObj.scale(0.2f);
-            renderObj.setOrientation(new SimpleVector(0, 0, 1), new SimpleVector(-10, 10, 0));
+            renderObj.scale(0.15f);
             renderObj.strip();
             renderObj.build();
 
