@@ -216,7 +216,7 @@ class Drawing {
         if (primitive == DrawingPrimitive.DRAWING_RECTANGLE)
         {
 
-            Quadrilateral.draw(canvas, transform, p0, p1, p2, p3, label, Color.WHITE);
+            Quadrilateral.draw(canvas, transform, p0, p1, p2, p3, label, Color.RED);
 
         }
         else if (primitive == DrawingPrimitive.DRAWING_GRID)

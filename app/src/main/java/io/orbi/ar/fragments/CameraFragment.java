@@ -344,6 +344,7 @@ public class CameraFragment extends Fragment
 
             }
         });
+        debug_switch.setChecked(true);
         //---------------------------
         //Light Source Setting LSS
         //---------------------------
@@ -514,14 +515,15 @@ public class CameraFragment extends Fragment
 //            addTrackable(R.mipmap.roof3, "roof3");
 //            addTrackable(R.mipmap.roof4, "roof4");
 
-            addTrackable(R.mipmap.roof10, "roof10");
-            addTrackable(R.mipmap.roof11, "roof11");
-            addTrackable(R.mipmap.roof12, "roof12");
-            addTrackable(R.mipmap.roof13, "roof13");
-            addTrackable(R.mipmap.roof14, "roof14");
-            addTrackable(R.mipmap.roof15, "roof15");
-            addTrackable(R.mipmap.roof16, "roof16");
-            addTrackable(R.mipmap.roof17, "roof17");
+//            addTrackable(R.mipmap.roof10, "roof10");
+//            addTrackable(R.mipmap.roof11, "roof11");
+//            addTrackable(R.mipmap.roof12, "roof12");
+//            addTrackable(R.mipmap.roof13, "roof13");
+//            addTrackable(R.mipmap.roof14, "roof14");
+//            addTrackable(R.mipmap.roof15, "roof15");
+//            addTrackable(R.mipmap.roof16, "roof16");
+//            addTrackable(R.mipmap.roof17, "roof17");
+            addTrackable(R.mipmap.roof_23, "roof_23");
             //-------------------------------------------------------
         }
     };
