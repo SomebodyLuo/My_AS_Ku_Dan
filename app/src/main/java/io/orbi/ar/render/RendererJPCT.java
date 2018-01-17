@@ -259,6 +259,8 @@ public class RendererJPCT implements GLSurfaceView.Renderer {
         if ((screenMgr == null) || (orientProvider == null)) return;
         float[] m, n = new float[3], v = ViewportJPCT.fovTan;
         float s;
+
+        // luoyouren: got a rotation matrix
         orientProvider.getRotationMatrix(mat4);
         m = mat4.matrix;
 

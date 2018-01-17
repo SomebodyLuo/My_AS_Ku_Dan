@@ -67,8 +67,8 @@ public class VideoPreview implements MediaPlayer.OnCompletionListener,MediaPlaye
         //下面开始实例化MediaPlayer对象
         Log.i(TAG, "InitMediaPlayer called");
         //然后指定需要播放文件的路径，初始化MediaPlayer
-        String dataPath = Environment.getExternalStorageDirectory().getPath() + "/MVI_9442.MOV";
-        //muliujia.mp4  ar_video.mp4  roof_video  VID20180114141330.mp4  VID20180115210204.mp4  MVI_9442.MOV
+        String dataPath = Environment.getExternalStorageDirectory().getPath() + "/muliujia.mp4";
+        //muliujia.mp4  ar_video.mp4  roof_video  VID20180114141330.mp4  VID20180115210204.mp4  MVI_9442.MOV  DJI_0060.MOV
 
         Log.i(TAG, dataPath);
         try {
@@ -170,7 +170,7 @@ public class VideoPreview implements MediaPlayer.OnCompletionListener,MediaPlaye
 //
 //        }
         Log.i(TAG, "videoWidth = " + videoWidth + "; videoHeight = " + videoHeight);
-        Log.i(TAG, "ViewWidth = " + mViewSize.getWidth() + "; ViewHeight = " + mViewSize.getWidth());
+        Log.i(TAG, "ViewWidth = " + mViewSize.getWidth() + "; ViewHeight = " + mViewSize.getHeight());
 
         if (true) {
             // 3. 视频文件播放到ImageReader

@@ -1150,6 +1150,7 @@ public class CameraFragment extends Fragment
                     int Yb = Y.getBuffer().remaining();
                     int Ub = U.getBuffer().remaining();
                     int Vb = V.getBuffer().remaining();
+                    Log.i(TAG, "Yb = " + Yb + "; Ub = " + Ub + "; Vb = " + Vb);
 
                     byte[] data = new byte[Yb * 2];
 
@@ -1168,15 +1169,15 @@ public class CameraFragment extends Fragment
                         colourFrame = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
                     }
 
-                    int YDataSize = mPreviewSize.getWidth() * mPreviewSize.getHeight();
+//                    int YDataSize = mPreviewSize.getWidth() * mPreviewSize.getHeight();
                     if (null == cameraFrameData) {
-                        cameraFrameData = new byte[width * height];
+                        cameraFrameData = new byte[Yb];
                     }
                     Y.getBuffer().rewind();
-                    Y.getBuffer().get(cameraFrameData, 0, YDataSize);
+                    Y.getBuffer().get(cameraFrameData);
 
                     // Process tracking based on the new camera frame data.
-                    mTrackerState = processTracking(cameraFrameData, mPreviewSize.getWidth(), mPreviewSize.getHeight(), mTrackerState, trackedCorners);
+                    mTrackerState = processTracking(cameraFrameData, width, height - 1, mTrackerState, trackedCorners);
 
 
                     //method 2
