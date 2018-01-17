@@ -246,74 +246,74 @@ public class CameraFragment extends Fragment
         //Buttons
         //-------------
         target_bttn = (ImageView) view.findViewById(R.id.target_bttn);
-//        target_bttn.setOnTouchListener(new View.OnTouchListener()
-//        {
-//            public boolean onTouch(View v, MotionEvent event)
-//            {
-//                if(event.getAction() == MotionEvent.ACTION_UP)
-//                {
-//                    if(render != null)
-//                    {
-//                        render.stick2screen(-600, -600);//default it off screen in between states
-//                        glSurfaceView.requestRender();//跳真
-//                        lss_switch.setChecked(false);//turn off manual light as need touch move events for model.
-//                    }
-//
-//                }
-//                if(event.getAction() == MotionEvent.ACTION_DOWN)
-//                {
-//
-//                        // Synchronize with the tracker state to prevent changes to state mid-processing.
-//                        synchronized (mTrackerState)
-//                        {
-//
-//                            if (mTrackerState == TrackerState.IMAGE_DETECTION)
-//                            {
-//
-//                                startArbiTracker(false);
-//
-//                                mTrackerState = TrackerState.ARBITRACK;
-//                                target_bttn.setImageResource(R.drawable.camera_icon);
-//
-//
-//
-//                            }
-//                            else if (mTrackerState == TrackerState.IMAGE_TRACKING)
-//                            {
-//
-//                                startArbiTracker(true);
-//
-//                                mTrackerState = TrackerState.ARBITRACK;
-//                                target_bttn.setImageResource(R.drawable.camera_icon);
-//
-//
-//                                if (render != null)
-//                                {
-//                                    int xp = v.getWidth() / 2;
-//                                    int yp = v.getHeight() / 2;
-//                                    //render.updatePosition(new Point(xp, yp), (float) enviro.getAzimuth(), (float) enviro.getZenithAngle(), 5f, mCameraPreviewSize.getWidth(), mCameraPreviewSize.getHeight());
-//                                }
-//
-//
-//                            }
-//                            else if (mTrackerState == TrackerState.ARBITRACK)
-//                            {
-//
-//                                stopArbiTracker();
-//
-//                                mTrackerState = TrackerState.IMAGE_DETECTION;
-//                                target_bttn.setImageResource(R.drawable.target);
-//
-//
-//
-//                            }
-//                        }
-//
-//                }
-//
-//                return false;
-//            }
-//        });
+        target_bttn.setOnTouchListener(new View.OnTouchListener()
+        {
+            public boolean onTouch(View v, MotionEvent event)
+            {
+                if(event.getAction() == MotionEvent.ACTION_UP)
+                {
+                    if(render != null)
+                    {
+                        render.stick2screen(-600, -600);//default it off screen in between states
+                        glSurfaceView.requestRender();//跳真
+                        lss_switch.setChecked(false);//turn off manual light as need touch move events for model.
+                    }
+
+                }
+                if(event.getAction() == MotionEvent.ACTION_DOWN)
+                {
+
+                        // Synchronize with the tracker state to prevent changes to state mid-processing.
+                        synchronized (mTrackerState)
+                        {
+
+                            if (mTrackerState == TrackerState.IMAGE_DETECTION)
+                            {
+
+                                NativeTracker.startArbiTracker(false);
+
+                                mTrackerState = TrackerState.ARBITRACK;
+                                target_bttn.setImageResource(R.drawable.camera_icon);
+
+
+
+                            }
+                            else if (mTrackerState == TrackerState.IMAGE_TRACKING)
+                            {
+
+                                NativeTracker.startArbiTracker(true);
+
+                                mTrackerState = TrackerState.ARBITRACK;
+                                target_bttn.setImageResource(R.drawable.camera_icon);
+
+
+                                if (render != null)
+                                {
+                                    int xp = v.getWidth() / 2;
+                                    int yp = v.getHeight() / 2;
+                                    //render.updatePosition(new Point(xp, yp), (float) enviro.getAzimuth(), (float) enviro.getZenithAngle(), 5f, mCameraPreviewSize.getWidth(), mCameraPreviewSize.getHeight());
+                                }
+
+
+                            }
+                            else if (mTrackerState == TrackerState.ARBITRACK)
+                            {
+
+                                NativeTracker.stopArbiTracker();
+
+                                mTrackerState = TrackerState.IMAGE_DETECTION;
+                                target_bttn.setImageResource(R.drawable.target);
+
+
+
+                            }
+                        }
+
+                }
+
+                return false;
+            }
+        });
 
 
         //----------------
