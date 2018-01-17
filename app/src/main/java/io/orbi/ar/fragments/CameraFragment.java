@@ -524,8 +524,12 @@ public class CameraFragment extends Fragment
 //            addTrackable(R.mipmap.roof16, "roof16");
 //            addTrackable(R.mipmap.roof17, "roof17");
             addTrackable(R.mipmap.roof_23, "roof_23");
-            addTrackable(R.mipmap.maliujia01, "maliujia01");
-            addTrackable(R.mipmap.maliujia02, "maliujia02");
+//            addTrackable(R.mipmap.roof_30, "roof_30");
+//            addTrackable(R.mipmap.roof40, "roof40");
+//            addTrackable(R.mipmap.roof41, "roof41");
+            addTrackable(R.mipmap.roof_42, "roof_42");
+//            addTrackable(R.mipmap.maliujia01, "maliujia01");
+//            addTrackable(R.mipmap.maliujia02, "maliujia02");
             //-------------------------------------------------------
         }
     };
@@ -861,7 +865,7 @@ public class CameraFragment extends Fragment
                     //Log.i("@@POINT_MOD",":"+Math.round(trackedData[0])+":"+Math.round(trackedData[1]));
                     if(!lss && !angle_preset)
                     {
-                        render.updateReference(stable_point, (float) enviro.getAzimuth(), (float) enviro.getZenithAngle(), scale, width, height, 0, 50, 0);
+                        render.updateReference(stable_point, (float) enviro.getAzimuth(), (float) enviro.getZenithAngle(), scale, width, height, 0, 60, 0);
                         //render.updatePosition(new Point(Math.round(trackedData[0]), Math.round(trackedData[1])), (float) enviro.getAzimuth(), (float) enviro.getZenithAngle(), scale, width, height);
                         render.setLightAngle(light1,(float) enviro.getAzimuth(), (float) enviro.getZenithAngle());
                         render.setLightAngle(light2,(float) enviro.getAzimuth(), 0);//chameleon
