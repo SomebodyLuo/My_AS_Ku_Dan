@@ -202,7 +202,7 @@ public class CameraFragment extends Fragment
     {
         this.model_index = getArguments().getInt("model_index");//the model index
 
-        Log.i("@@INDEX",":"+model_index);
+        Log.i(TAG,":"+model_index);
         return inflater.inflate(R.layout.camera_fragment, container, false);
     }
 
@@ -466,7 +466,7 @@ public class CameraFragment extends Fragment
                         editor.putLong("pre_zen", Double.doubleToRawLongBits(fixedZenith));
                         editor.commit();
 
-                        Log.i("@@PRESET",""+fixedAzimuth+":"+fixedZenith);
+                        Log.i(TAG,""+fixedAzimuth+":"+fixedZenith);
                     }
                 }
 
@@ -528,8 +528,8 @@ public class CameraFragment extends Fragment
 //            addTrackable(R.mipmap.roof40, "roof40");
 //            addTrackable(R.mipmap.roof41, "roof41");
             addTrackable(R.mipmap.roof_42, "roof_42");
-//            addTrackable(R.mipmap.maliujia01, "maliujia01");
-//            addTrackable(R.mipmap.maliujia02, "maliujia02");
+            addTrackable(R.mipmap.maliujia01, "maliujia01");
+            addTrackable(R.mipmap.maliujia02, "maliujia02");
             //-------------------------------------------------------
         }
     };
@@ -544,7 +544,7 @@ public class CameraFragment extends Fragment
 
             // Don't let the object get too small or too large.
             mScaleFactor = Math.max(1.0f, Math.min(mScaleFactor, 5.0f));
-            Log.i("@@SCALE",":"+mScaleFactor);
+            Log.i(TAG,":"+mScaleFactor);
 
 
             if(!pinching)
@@ -555,7 +555,7 @@ public class CameraFragment extends Fragment
                 BasicTimer.TaskHandle handle = BasicTimer.setTimeout(new Runnable() {
                     public void run()
                     {
-                        Log.i("@@TIMER", "Executed after 3000 ms!");
+                        Log.i(TAG, "Executed after 3000 ms!");
                         pinching = false;
                         sendToast("Scale Set");
                     }
@@ -601,7 +601,7 @@ public class CameraFragment extends Fragment
         //which model to load and settings
         if(model_index == 0 || model_index == 1)
         {
-            Log.i("@@INDEX",":Plant");
+            Log.i(TAG,":Plant");
             sendToast("Plant Loaded");
             render.init(objLoader.loadHouse());
             render.setLightColor(light1, 255, 255, 255);
@@ -609,7 +609,7 @@ public class CameraFragment extends Fragment
         }
         else if(model_index == 2)
         {
-            Log.i("@@INDEX",":Ball");
+            Log.i(TAG,":Ball");
             sendToast("Ball Loaded");
             render.init(objLoader.loadPlant01());
             render.setLightColor(light1, 60, 60, 60);
@@ -645,9 +645,11 @@ public class CameraFragment extends Fragment
     private void getlocLight()
     {
         //setup location provider
-        appLocationManager = new LocationDetection(this.getActivity().getApplicationContext(),this.getActivity());
+        appLocationManager = new LocationDetection(this.getActivity().getApplicationContext(), this.getActivity());
         lat = appLocationManager.getLatitude();
         lng = appLocationManager.getLongitude();
+
+        Log.i(TAG," "+lat+":"+lng);
 
         //default to shenzhen
         if(lat == 0 && lng == 0)
@@ -660,9 +662,9 @@ public class CameraFragment extends Fragment
             //longitude = 130.359499;
         }
 
-        Log.i("@@LOC"," "+lat+":"+lng);
+        Log.i(TAG," "+lat+":"+lng);
 
-        enviro = new EnviroDetection(lat,lng);
+        enviro = new EnviroDetection(lat, lng);
 
         if (enviro != null)
         {
@@ -671,8 +673,6 @@ public class CameraFragment extends Fragment
 
             output.setText("AZI: " + gazi + " | ZEN: " + zazi + " | " + LocationDetection.loci);
         }
-
-
     }
 
     @Override

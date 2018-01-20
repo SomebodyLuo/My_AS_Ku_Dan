@@ -25,6 +25,7 @@ import java.util.Locale;
 
 public class LocationDetection implements LocationListener {
 
+    private final String TAG = "LocationDetection";
     private LocationManager locationManager;
     private double latitude;
     private double longitude;
@@ -37,7 +38,7 @@ public class LocationDetection implements LocationListener {
     {
         this.ctx = context;
 
-        Log.d("@@APP", "LOCATION");
+        Log.d(TAG, "LOCATION");
         locationManager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
         criteria = new Criteria();
         criteria.setAccuracy(Criteria.ACCURACY_FINE);
@@ -51,24 +52,26 @@ public class LocationDetection implements LocationListener {
 
         Location location = locationManager.getLastKnownLocation(provider);
 
+        Log.i(TAG, "getLastKnownLocation! ");
         if (location != null)
         {
 
-            Log.i("@@APP", "Location achieved!");
+            Log.i(TAG, "Location achieved! ");
             latitude = location.getLatitude();
             longitude = location.getLongitude();
+            Log.i(TAG, "Location achieved! latitude = " + latitude + "; longitude = " + longitude);
 
             loci = "深圳";
 
         }
         else
         {
+            Log.i(TAG, "No location :(");
             //default to setting in camerafragment
             latitude = 0;
             longitude = 0;
             loci = "深圳";
 
-            Log.i("@@APP", "No location :(");
 
         }
 
@@ -131,8 +134,6 @@ public class LocationDetection implements LocationListener {
 //      int latitute = (int) lat;
         latitude = lat;
         longitude = lon;
-
-
     }
 
     /*
