@@ -668,8 +668,8 @@ public class CameraFragment extends Fragment
 
         if (enviro != null)
         {
-            int gazi = (int) Math.round(enviro.getAzimuth());
-            int zazi = (int) Math.round(enviro.getZenithAngle());
+            int gazi = (int) Math.round(enviro.getAzimuth());       //Azimuth   方位角
+            int zazi = (int) Math.round(enviro.getZenithAngle());   //Zenith    天顶角
 
             output.setText("AZI: " + gazi + " | ZEN: " + zazi + " | " + LocationDetection.loci);
         }
