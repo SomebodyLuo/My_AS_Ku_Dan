@@ -123,6 +123,7 @@ public class CameraFragment extends Fragment
     RectF mDstRect = new RectF();
     Matrix mCanvasTransform = new Matrix();
 
+    // 模型渲染图层
     private GLSurfaceView glSurfaceView;
 
     private CameraPreview mCameraPreview;
@@ -130,6 +131,7 @@ public class CameraFragment extends Fragment
 
     private SensorWork sensorWork;
 
+    // 摄像头/视频图像图层
     private CameraSurfaceView mSurfaceView;
 
     private TextView mStatusLabel;

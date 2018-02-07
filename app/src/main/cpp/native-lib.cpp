@@ -10,7 +10,7 @@
  */
 KudanVector2 project(KudanVector3 X, KudanMatrix3 intrinsicMatrix, KudanVector3 position, KudanQuaternion orientation) {
 
-    // to project a 3D point X (3x1) according to a camera with rotation R (3x3) and translation T (3x1), and the camera intrinsic matrkx K (3x3), xh = K[R|T]X = K*(RX + T), where xh is the homogeneous point
+    // to project a 3D point X (3x1) according to a camera with rotation R (3x3) and translation T (3x1), and the camera intrinsic matrix K (3x3), xh = K[R|T]X = K*(RX + T), where xh is the homogeneous point
 
 
     //KudanMatrix3 rotationMatrix = KudanQuaternion::quaternionToRotation(orientation);
@@ -19,7 +19,7 @@ KudanVector2 project(KudanVector3 X, KudanMatrix3 intrinsicMatrix, KudanVector3 
     KudanVector3 RX = rotationMatrix * X;
     KudanVector3 RXplusT = RX + position; // this is the point X expressed in the camera's coordinate frame
 
-    // Project using the intrinsicmatrix:
+    // Project using the intrinsic matrix:
     KudanVector3 XH = intrinsicMatrix * RXplusT;
 
     // Divide the homogeneous coordinates through by the z coordinate
