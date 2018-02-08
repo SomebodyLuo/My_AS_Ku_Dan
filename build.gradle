@@ -14,10 +14,29 @@ buildscript {
 
 allprojects {
     repositories {
+        maven { url 'http://raw.github.com/saki4510t/libcommon/master/repository/' }
+        jcenter()
+    }
+}
+
+allprojects {
+    repositories {
         jcenter()
     }
 }
 
 task clean(type: Delete) {
     delete rootProject.buildDir
+}
+
+
+ext {
+    supportLibVersion = '25.3.1'  // variable that can be referenced to keep support libs consistent
+    commonLibVersion= '1.5.20'
+    versionBuildTool = '26.0.2'
+    versionCompiler = 25
+    versionTarget = 23
+    versionNameString = '1.0.0'
+    javaSourceCompatibility = JavaVersion.VERSION_1_7
+    javaTargetCompatibility = JavaVersion.VERSION_1_7
 }
